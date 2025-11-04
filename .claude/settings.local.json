@@ -3,7 +3,8 @@
     "allow": [
       "WebSearch",
       "WebFetch(domain:www.12306.cn)",
-      "WebFetch(domain:trains.ctrip.com)"
+      "WebFetch(domain:trains.ctrip.com)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []
