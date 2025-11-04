@@ -521,143 +521,197 @@
         function parseLogFile(logContent) {
             const lines = logContent.split('\n');
             const requests = [];
-
-            let currentRequest = null;
-            let currentSection = null;
-            let sectionContent = [];
             let globalTimeSpans = []; // 存储所有时间跨度
+
+            // 第一步：按分隔线和时间日志进行分组
+            const groups = parseIntoGroups(lines);
+            console.log('解析到的分组数量:', groups.length);
+
+            // 第二步：每8个组合并成一个HTTP请求
+            for (let i = 0; i < groups.length; i += 8) {
+                const eightGroups = groups.slice(i, i + 8);
+
+                if (eightGroups.length >= 8) {
+                    const request = combineGroupsToRequest(eightGroups, i / 8 + 1);
+                    if (request) {
+                        requests.push(request);
+
+                        // 收集时间跨度
+                        if (request.requestStartTime && request.requestEndTime) {
+                            globalTimeSpans.push({
+                                start: request.requestStartTime,
+                                end: request.requestEndTime
+                            });
+                        }
+                    }
+                }
+            }
+
+            console.log('组合成的HTTP请求数量:', requests.length);
+            return { requests, timeSpans: globalTimeSpans };
+        }
+
+        // 按分隔线和时间日志进行分组
+        function parseIntoGroups(lines) {
+            const groups = [];
+            let currentGroup = [];
+            let groupCount = 0;
+
+            // 时间日志的正则表达式 [时间 INFO]
+            const timeLogRegex = /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \w+\s*\]/;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
+                const trimmedLine = line.trim();
 
-                // 检测请求开始
-                if (line.includes('系统开始代理请求')) {
-                    if (currentRequest) {
-                        // 先保存当前未完成的section内容到上一个请求
-                        if (currentSection && sectionContent.length > 0) {
-                            const cleanContent = sectionContent.filter(l => l.trim()).join('\n');
-                            currentRequest[currentSection] = cleanContent;
-                            currentSection = null;
-                            sectionContent = [];
-                        }
-                        // 然后保存上一个请求
-                        requests.push(currentRequest);
+                // 检查是否是分隔线（独占一行）或者时间日志行
+                if (trimmedLine === '--------------------------------------------------------------------------------------' || timeLogRegex.test(trimmedLine)) {
+                    // 如果当前组有内容，保存它
+                    if (currentGroup.length > 0) {
+                        groups.push({
+                            id: ++groupCount,
+                            content: currentGroup.join('\n'),
+                            lineCount: currentGroup.length,
+                            startLine: i - currentGroup.length + 1,
+                            endLine: i - 1
+                        });
+                        currentGroup = [];
                     }
 
-                    // 解析时间信息
-                    let requestStartTime = '';
-                    let requestEndTime = '';
-                    for (let j = i; j < Math.min(i + 10, lines.length); j++) {
-                        if (lines[j].includes('请求开始时间:')) {
-                            requestStartTime = lines[j].split('请求开始时间:')[1].trim();
-                        }
-                        if (lines[j].includes('结果返回时间:')) {
-                            requestEndTime = lines[j].split('结果返回时间:')[1].trim();
-                        }
+                    // 如果是分隔线，不加入新组
+                    if (trimmedLine !== '--------------------------------------------------------------------------------------') {
+                        currentGroup.push(line);
                     }
-
-                    // 解析处理时间
-                    let processTime = '';
-                    for (let j = i; j < Math.min(i + 50, lines.length); j++) {
-                        if (lines[j].includes('x-process-time')) {
-                            const timeMatch = lines[j].match(/x-process-time\s+(\d+\.?\d*)/);
-                            if (timeMatch) {
-                                processTime = parseFloat(timeMatch[1]).toFixed(2) + 's';
-                            }
-                            break;
-                        }
-                    }
-
-                    currentRequest = {
-                        id: requests.length + 1,
-                        logId: '', // 先设为空，后面从Response Header中提取
-                        processTime: processTime,
-                        requestHeader: '',
-                        requestBody: '',
-                        responseHeader: '',
-                        responseBody: '',
-                        requestStartTime: requestStartTime,
-                        requestEndTime: requestEndTime
-                    };
-
-                    // 添加到全局时间跨度
-                    if (requestStartTime && requestEndTime) {
-                        globalTimeSpans.push({ start: requestStartTime, end: requestEndTime });
-                    }
+                } else {
+                    currentGroup.push(line);
                 }
-
-                // 检测各部分开始
-                if (line.includes('Request Header:')) {
-                    currentSection = 'requestHeader';
-                    sectionContent = [];
-                } else if (line.includes('Request Body:')) {
-                    currentSection = 'requestBody';
-                    sectionContent = [];
-                } else if (line.includes('Response Header:')) {
-                    currentSection = 'responseHeader';
-                    sectionContent = [];
-                } else if (line.includes('Response Body:')) {
-                    currentSection = 'responseBody';
-                    sectionContent = [];
-                } else if (line.includes('--------------------------------------------------------------------------------------')) {
-                    // 分隔线
-                    if (currentSection) {
-                        // 如果是第一次遇到分隔线，且section为空，说明这是section开始的分隔线
-                        if (sectionContent.length === 0) {
-                            // 不做任何事，继续收集内容
-                        } else {
-                            // 这是section结束的分隔线，保存内容
-                            const cleanContent = sectionContent.filter(l => l.trim()).join('\n');
-                            currentRequest[currentSection] = cleanContent;
-
-                            // 如果是Response Header，尝试从中提取X-LOG-ID
-                            if (currentSection === 'responseHeader' && !currentRequest.logId) {
-                                const logIdMatch = cleanContent.match(/X-LOG-ID\s+(.+)/);
-                                if (logIdMatch) {
-                                    currentRequest.logId = logIdMatch[1].trim();
-                                }
-                            }
-
-                            currentSection = null;
-                            sectionContent = [];
-                        }
-                    }
-                } else if (currentSection && currentRequest) {
-                    // 收集内容 - 更宽松的条件
-                    if (line.trim() && !line.includes('☆☆☆') && !line.includes('系统开始代理请求')) {
-                        sectionContent.push(line);
-                    }
-                }
-
-
-                            }
-
-            // 添加最后一个请求，并保存最后的section内容
-            if (currentRequest) {
-                // 保存最后一个section的内容
-                if (currentSection && sectionContent.length > 0) {
-                    const cleanContent = sectionContent.filter(l => l.trim()).join('\n');
-                    currentRequest[currentSection] = cleanContent;
-
-                    // 如果是Response Header，尝试从中提取X-LOG-ID
-                    if (currentSection === 'responseHeader' && !currentRequest.logId) {
-                        const logIdMatch = cleanContent.match(/X-LOG-ID\s+(.+)/);
-                        if (logIdMatch) {
-                            currentRequest.logId = logIdMatch[1].trim();
-                        }
-                    }
-                }
-
-                // 如果仍然没有找到X-LOG-ID，使用默认值
-                if (!currentRequest.logId) {
-                    currentRequest.logId = `LOG-${requests.length + 1}`;
-                }
-
-                requests.push(currentRequest);
             }
 
-            // 将时间跨度数据附加到返回结果
-            return { requests, timeSpans: globalTimeSpans };
+            // 添加最后一个组（如果没有以分隔线结尾）
+            if (currentGroup.length > 0) {
+                groups.push({
+                    id: ++groupCount,
+                    content: currentGroup.join('\n'),
+                    lineCount: currentGroup.length,
+                    startLine: lines.length - currentGroup.length + 1,
+                    endLine: lines.length
+                });
+            }
+
+            return groups;
+        }
+
+        // 将8个组合并成一个HTTP请求
+        function combineGroupsToRequest(eightGroups, requestId) {
+            if (eightGroups.length < 8) {
+                console.warn('分组数量不足8个，无法组成完整HTTP请求');
+                return null;
+            }
+
+            // 按顺序分配：12-Request Header, 34-Request Body, 56-Response Header, 78-Response Body
+            const requestHeaderContent = eightGroups.slice(0, 2).map(g => g.content).join('\n');
+            const requestBodyContent = eightGroups.slice(2, 4).map(g => g.content).join('\n');
+            const responseHeaderContent = eightGroups.slice(4, 6).map(g => g.content).join('\n');
+            const responseBodyContent = eightGroups.slice(6, 8).map(g => g.content).join('\n');
+
+            // 解析时间信息
+            const { startTime, endTime, processTime, logId } = extractTimeInfo(
+                requestHeaderContent, requestBodyContent, responseHeaderContent, responseBodyContent
+            );
+
+            return {
+                id: requestId,
+                logId: logId || `LOG-${requestId}`,
+                processTime: processTime,
+                requestHeader: requestHeaderContent,
+                requestBody: requestBodyContent,
+                responseHeader: responseHeaderContent,
+                responseBody: responseBodyContent,
+                requestStartTime: startTime,
+                requestEndTime: endTime
+            };
+        }
+
+        // 从内容中提取时间信息
+        function extractTimeInfo(requestHeader, requestBody, responseHeader, responseBody) {
+            let startTime = '';
+            let endTime = '';
+            let processTime = '';
+            let logId = '';
+
+            console.log('========== 提取时间信息 ==========');
+            console.log('Request Header内容长度:', requestHeader.length);
+            console.log('Request Body内容长度:', requestBody.length);
+            console.log('Response Header内容长度:', responseHeader.length);
+            console.log('Response Body内容长度:', responseBody.length);
+
+            // 优先从Request Header中提取时间信息
+            if (requestHeader) {
+                const requestLines = requestHeader.split('\n');
+                console.log('Request Header行数:', requestLines.length);
+
+                for (const line of requestLines) {
+                    console.log('检查行:', line);
+                    if (line.includes('请求开始时间:')) {
+                        startTime = line.split('请求开始时间:')[1]?.trim() || '';
+                        console.log('找到开始时间:', startTime);
+                    }
+                    if (line.includes('结果返回时间:')) {
+                        endTime = line.split('结果返回时间:')[1]?.trim() || '';
+                        console.log('找到结束时间:', endTime);
+                    }
+                    if (line.includes('x-process-time')) {
+                        const timeMatch = line.match(/x-process-time\s+(\d+\.?\d*)/);
+                        if (timeMatch) {
+                            processTime = parseFloat(timeMatch[1]).toFixed(2) + 's';
+                            console.log('找到处理时间:', processTime);
+                        }
+                    }
+                }
+            }
+
+            // 如果Request Header中没找到，再从其他部分查找
+            if (!startTime || !endTime) {
+                console.log('从Request Header未找到完整时间信息，搜索其他部分...');
+                const allContent = [requestBody, responseHeader, responseBody].join('\n');
+                const lines = allContent.split('\n');
+
+                for (const line of lines) {
+                    if (!startTime && line.includes('请求开始时间:')) {
+                        startTime = line.split('请求开始时间:')[1]?.trim() || '';
+                        console.log('从其他部分找到开始时间:', startTime);
+                    }
+                    if (!endTime && line.includes('结果返回时间:')) {
+                        endTime = line.split('结果返回时间:')[1]?.trim() || '';
+                        console.log('从其他部分找到结束时间:', endTime);
+                    }
+                    if (!processTime && line.includes('x-process-time')) {
+                        const timeMatch = line.match(/x-process-time\s+(\d+\.?\d*)/);
+                        if (timeMatch) {
+                            processTime = parseFloat(timeMatch[1]).toFixed(2) + 's';
+                            console.log('从其他部分找到处理时间:', processTime);
+                        }
+                    }
+                }
+            }
+
+            // 从Response Header中提取X-LOG-ID
+            if (responseHeader) {
+                const logIdMatch = responseHeader.match(/X-LOG-ID\s+(.+)/);
+                if (logIdMatch) {
+                    logId = logIdMatch[1].trim();
+                    console.log('找到LOG-ID:', logId);
+                }
+            }
+
+            console.log('最终提取结果:');
+            console.log('- 开始时间:', startTime);
+            console.log('- 结束时间:', endTime);
+            console.log('- 处理时间:', processTime);
+            console.log('- LOG-ID:', logId);
+            console.log('============================');
+
+            return { startTime, endTime, processTime, logId };
         }
 
         // 加载和解析日志文件
@@ -671,23 +725,58 @@
         }
 
         function loadFileContent(fileContent, fileName) {
-            console.log('开始加载文件内容:', fileName); // 添加调试日志
+            console.log('========== 开始解析文件 ==========');
+            console.log('文件名:', fileName);
+
             try {
+                console.log('调用parseLogFile函数...');
                 const result = parseLogFile(fileContent);
-                console.log('解析完成，请求数量:', result.requests.length); // 添加调试日志
+
+                console.log('========== 解析结果 ==========');
+                console.log('解析到的请求数量:', result.requests.length);
+                console.log('解析到的时间跨度数量:', result.timeSpans.length);
+
+                if (result.requests.length > 0) {
+                    console.log('第一个请求预览:');
+                    const firstRequest = result.requests[0];
+                    console.log('- 请求ID:', firstRequest.id);
+                    console.log('- LOG-ID:', firstRequest.logId);
+                    console.log('- 处理时间:', firstRequest.processTime);
+                    console.log('- 开始时间:', firstRequest.requestStartTime);
+                    console.log('- 结束时间:', firstRequest.requestEndTime);
+                    console.log('- Request Header长度:', firstRequest.requestHeader.length);
+                    console.log('- Request Body长度:', firstRequest.requestBody.length);
+                    console.log('- Response Header长度:', firstRequest.responseHeader.length);
+                    console.log('- Response Body长度:', firstRequest.responseBody.length);
+                }
+
+                if (result.timeSpans.length > 0) {
+                    console.log('时间跨度预览:');
+                    console.log('- 第一个时间跨度:', result.timeSpans[0]);
+                    console.log('- 最后一个时间跨度:', result.timeSpans[result.timeSpans.length - 1]);
+                }
+
+                console.log('============================');
+
                 requestsData = result.requests;
                 timeSpansData = result.timeSpans;
                 currentFileName = fileName;
 
+                console.log('开始渲染界面...');
                 // 清空容器并重新渲染
                 $('#requests-container').empty();
                 renderRequests();
                 updateStatistics();
 
+                console.log('界面渲染完成！');
                 // 显示成功提示
                 showSuccessMessage(`成功加载文件: ${fileName}`);
             } catch (error) {
-                console.error('解析文件失败:', error); // 添加调试日志
+                console.error('========== 解析失败 ==========');
+                console.error('文件名:', fileName);
+                console.error('错误信息:', error.message);
+                console.error('错误堆栈:', error.stack);
+                console.error('============================');
                 showErrorMessage(`解析文件失败: ${error.message}`);
             }
         }
@@ -829,25 +918,54 @@
 
         // 计算时间差（返回秒数）
         function calculateTimeDifferenceInSeconds(startTime, endTime) {
-            // 解析时间格式，日志中的时间都是UTC时间格式
-            const parseTime = (timeStr) => {
-                const parts = timeStr.split(':');
-                let hours = parseInt(parts[0]);
-                let minutes = parseInt(parts[1]);
-                let seconds = parseInt(parts[2]);
+            console.log('========== 计算时间差 ==========');
+            console.log('开始时间:', startTime);
+            console.log('结束时间:', endTime);
 
-                return hours * 3600 + minutes * 60 + seconds;
+            // 解析时间格式，支持 YYYY-MM-DD HH:MM:SS 格式
+            const parseTime = (timeStr) => {
+                // 如果时间字符串包含日期部分
+                if (timeStr.includes('-')) {
+                    // 格式: YYYY-MM-DD HH:MM:SS
+                    const dateTimeMatch = timeStr.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+                    if (dateTimeMatch) {
+                        const [, year, month, day, hours, minutes, seconds] = dateTimeMatch;
+                        const date = new Date(`${year}-${month}-${day}T${hours}:${minutes}:${seconds}`);
+                        console.log('解析完整日期时间:', date.getTime(), 'ms');
+                        return date.getTime() / 1000; // 转换为秒
+                    }
+                }
+
+                // 如果只是 HH:MM:SS 格式
+                const timeMatch = timeStr.match(/(\d{2}):(\d{2}):(\d{2})/);
+                if (timeMatch) {
+                    const [, hours, minutes, seconds] = timeMatch;
+                    const totalSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
+                    console.log('解析时间部分:', totalSeconds, '秒');
+                    return totalSeconds;
+                }
+
+                console.log('无法解析时间格式:', timeStr);
+                return 0;
             };
 
-            const startSeconds = parseTime(startTime);
-            const endSeconds = parseTime(endTime);
+            const startTimestamp = parseTime(startTime);
+            const endTimestamp = parseTime(endTime);
 
-            // 计算时间差
-            let diff = endSeconds - startSeconds;
-            if (diff < 0) {
-                // 如果结束时间小于开始时间，说明跨天了
+            console.log('开始时间戳:', startTimestamp);
+            console.log('结束时间戳:', endTimestamp);
+
+            // 计算时间差（秒）
+            let diff = endTimestamp - startTimestamp;
+
+            // 如果是时间部分（小于86400秒）且结果为负数，说明跨天了
+            if (Math.abs(startTimestamp) < 86400 && Math.abs(endTimestamp) < 86400 && diff < 0) {
                 diff += 24 * 3600; // 加一天的时间
+                console.log('检测到跨天，调整时间差:', diff, '秒');
             }
+
+            console.log('最终时间差:', diff, '秒');
+            console.log('============================');
 
             return diff;
         }
@@ -1072,22 +1190,34 @@
             if (files.length === 0) return;
 
             const file = files[0];
-            console.log('处理文件:', file.name); // 添加调试日志
+
+            // 打印文件详细信息
+            console.log('========== 文件信息 ==========');
+            console.log('文件名:', file.name);
+            console.log('文件大小:', file.size, 'bytes');
+            console.log('文件类型:', file.type);
+            console.log('最后修改时间:', new Date(file.lastModified).toLocaleString());
+            console.log('文件扩展名:', file.name.substring(file.name.lastIndexOf('.')).toLowerCase());
+            console.log('============================');
 
             // 检查文件类型
             const validTypes = ['.log', '.txt'];
             const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
 
             if (!validTypes.includes(fileExtension)) {
+                console.error('文件类型不匹配:', fileExtension);
                 showErrorMessage('请选择 .log 或 .txt 格式的日志文件');
                 return;
             }
 
             // 检查文件大小 (限制为50MB)
             if (file.size > 50 * 1024 * 1024) {
+                console.error('文件大小超出限制:', file.size, 'bytes (50MB =', 50 * 1024 * 1024, 'bytes)');
                 showErrorMessage('文件大小不能超过50MB');
                 return;
             }
+
+            console.log('文件验证通过，开始读取...');
 
             // 显示文件信息
             showFileInfo(file);
@@ -1095,11 +1225,20 @@
             // 读取文件内容
             const reader = new FileReader();
             reader.onload = function(e) {
-                console.log('文件读取完成，开始解析'); // 添加调试日志
-                loadFileContent(e.target.result, file.name);
+                console.log('========== 文件内容预览 ==========');
+                const content = e.target.result;
+                console.log('文件内容长度:', content.length, '字符');
+                console.log('文件内容前200字符:');
+                console.log(content.substring(0, 200));
+                console.log('文件内容后200字符:');
+                console.log(content.substring(content.length - 200));
+                console.log('============================');
+
+                console.log('开始解析文件...');
+                loadFileContent(content, file.name);
             };
             reader.onerror = function() {
-                console.error('文件读取失败'); // 添加调试日志
+                console.error('文件读取失败');
                 showErrorMessage('文件读取失败');
             };
             reader.readAsText(file);
