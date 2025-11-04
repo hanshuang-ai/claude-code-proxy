@@ -546,28 +546,28 @@
                                 <span>Request Header</span>
                                 <span class="toggle-icon" id="icon-${partIdPrefix}-req-header">▼</span>
                             </div>
-                            <div class="part-content hidden" id="${partIdPrefix}-req-header">${request.requestHeader}</div>
+                            <div class="part-content hidden" id="${partIdPrefix}-req-header">${formatContent(request.requestHeader, 'requestHeader')}</div>
                         </div>
                         <div class="part-card">
                             <div class="part-header" onclick="toggleContent('${partIdPrefix}-req-body')">
                                 <span>Request Body</span>
                                 <span class="toggle-icon" id="icon-${partIdPrefix}-req-body">▼</span>
                             </div>
-                            <div class="part-content hidden" id="${partIdPrefix}-req-body">${request.requestBody}</div>
+                            <div class="part-content hidden" id="${partIdPrefix}-req-body">${formatContent(request.requestBody, 'requestBody')}</div>
                         </div>
                         <div class="part-card">
                             <div class="part-header response-header-part" onclick="toggleContent('${partIdPrefix}-res-header')">
                                 <span>Response Header</span>
                                 <span class="toggle-icon" id="icon-${partIdPrefix}-res-header">▼</span>
                             </div>
-                            <div class="part-content hidden" id="${partIdPrefix}-res-header">${request.responseHeader}</div>
+                            <div class="part-content hidden" id="${partIdPrefix}-res-header">${formatContent(request.responseHeader, 'responseHeader')}</div>
                         </div>
                         <div class="part-card">
                             <div class="part-header" onclick="toggleContent('${partIdPrefix}-res-body')">
                                 <span>Response Body</span>
                                 <span class="toggle-icon" id="icon-${partIdPrefix}-res-body">▼</span>
                             </div>
-                            <div class="part-content hidden" id="${partIdPrefix}-res-body">${request.responseBody}</div>
+                            <div class="part-content hidden" id="${partIdPrefix}-res-body">${formatContent(request.responseBody, 'responseBody')}</div>
                         </div>
                     </div>
                 </div>
@@ -679,6 +679,155 @@
             } else {
                 return `${seconds}秒`;
             }
+        }
+
+        // 格式化显示内容
+        function formatContent(content, type) {
+            if (!content || content.trim() === '') {
+                return '<span style="color: #999;">(无内容)</span>';
+            }
+
+            // 根据类型进行不同的格式化
+            switch(type) {
+                case 'requestHeader':
+                case 'responseHeader':
+                    return formatHeaders(content);
+                case 'requestBody':
+                case 'responseBody':
+                    return formatBody(content);
+                default:
+                    return escapeHtml(content);
+            }
+        }
+
+        // 格式化HTTP头部
+        function formatHeaders(content) {
+            const lines = content.split('\n');
+            let formatted = '';
+
+            lines.forEach(line => {
+                if (line.trim()) {
+                    // 查找包含冒号的行（标准的HTTP头部格式）
+                    if (line.includes(':')) {
+                        const colonIndex = line.indexOf(':');
+                        const headerName = line.substring(0, colonIndex);
+                        const headerValue = line.substring(colonIndex + 1);
+
+                        formatted += `<span style="color: #4CAF50; font-weight: bold;">${escapeHtml(headerName.trim())}</span>:<span style="color: #2196F3;">${escapeHtml(headerValue.trim())}</span>\n`;
+                    } else {
+                        // 处理其他行（如HTTP状态行）
+                        if (line.includes('HTTP/')) {
+                            formatted += `<span style="color: #FF9800; font-weight: bold;">${escapeHtml(line.trim())}</span>\n`;
+                        } else {
+                            formatted += `<span style="color: #ccc;">${escapeHtml(line.trim())}</span>\n`;
+                        }
+                    }
+                }
+            });
+
+            return formatted;
+        }
+
+        // 格式化请求/响应体
+        function formatBody(content) {
+            try {
+                // 尝试解析为JSON
+                const jsonData = JSON.parse(content);
+                return formatJson(jsonData);
+            } catch (e) {
+                // 如果不是JSON，检查是否包含JSON片段
+                if (content.includes('{') && content.includes('}')) {
+                    return tryFormatPartialJson(content);
+                }
+                // 如果不是JSON，直接返回转义后的内容
+                return escapeHtml(content);
+            }
+        }
+
+        // 格式化JSON对象
+        function formatJson(obj, indent = 0) {
+            const spaces = '  '.repeat(indent);
+            let result = '';
+
+            if (Array.isArray(obj)) {
+                result += '[\n';
+                obj.forEach((item, index) => {
+                    result += spaces + '  ';
+                    if (typeof item === 'object' && item !== null) {
+                        result += formatJson(item, indent + 1);
+                    } else {
+                        result += formatJsonValue(item);
+                    }
+                    if (index < obj.length - 1) result += ',';
+                    result += '\n';
+                });
+                result += spaces + ']';
+            } else if (typeof obj === 'object' && obj !== null) {
+                result += '{\n';
+                const keys = Object.keys(obj);
+                keys.forEach((key, index) => {
+                    result += spaces + '  ';
+                    result += `<span style="color: #9C27B0;">"${escapeHtml(key)}"</span>: `;
+
+                    if (typeof obj[key] === 'object' && obj[key] !== null) {
+                        result += formatJson(obj[key], indent + 1);
+                    } else {
+                        result += formatJsonValue(obj[key]);
+                    }
+
+                    if (index < keys.length - 1) result += ',';
+                    result += '\n';
+                });
+                result += spaces + '}';
+            } else {
+                result += formatJsonValue(obj);
+            }
+
+            return result;
+        }
+
+        // 格式化JSON值
+        function formatJsonValue(value) {
+            if (typeof value === 'string') {
+                // 检查是否是URL
+                if (value.startsWith('http://') || value.startsWith('https://')) {
+                    return `<a href="${escapeHtml(value)}" target="_blank" style="color: #2196F3; text-decoration: underline;">"${escapeHtml(value)}"</a>`;
+                }
+                return `<span style="color: #4CAF50;">"${escapeHtml(value)}"</span>`;
+            } else if (typeof value === 'number') {
+                return `<span style="color: #FF9800;">${value}</span>`;
+            } else if (typeof value === 'boolean') {
+                return `<span style="color: #F44336;">${value}</span>`;
+            } else if (value === null) {
+                return `<span style="color: #9E9E9E;">null</span>`;
+            } else {
+                return `<span style="color: #666;">${value}</span>`;
+            }
+        }
+
+        // 尝试格式化部分JSON内容
+        function tryFormatPartialJson(content) {
+            let result = escapeHtml(content);
+
+            // 尝试匹配JSON对象并格式化
+            const jsonRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+            result = result.replace(jsonRegex, (match) => {
+                try {
+                    const jsonObj = JSON.parse(match);
+                    return formatJson(jsonObj);
+                } catch (e) {
+                    return match;
+                }
+            });
+
+            return result;
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // 页面加载时执行
