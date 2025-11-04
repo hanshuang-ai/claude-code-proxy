@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>  
+<!DOCTYPE log4j:configuration PUBLIC "-//APACHE//DTD LOG4J 1.2//EN" "log4j.dtd">  
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">    
+    <appender name="CONSOLE.ERR" class="org.apache.log4j.ConsoleAppender">  
+        <param name="Encoding" value="UTF-8"/>
+        <param name="target" value="System.err" />   
+        <layout class="org.apache.log4j.PatternLayout">  
+            <param name="ConversionPattern"  
+                value="[%d{yyyy-MM-dd HH:mm:ss\} %-5p] [%t] {%c:%L}-%m%n" />  
+        </layout>  
+        <filter class="org.apache.log4j.varia.LevelRangeFilter">  
+            <param name="LevelMin" value="warn" />  
+            <param name="LevelMax" value="fatal" />  
+            <param name="AcceptOnMatch" value="false" />  
+        </filter>  
+    </appender>  
+  
+    <appender name="CONSOLE.OUT" class="org.apache.log4j.ConsoleAppender"> 
+        <param name="Encoding" value="UTF-8"/> 
+        <param name="target" value="System.out" />   
+        <layout class="org.apache.log4j.PatternLayout">  
+            <param name="ConversionPattern"  
+                value="[%d{yyyy-MM-dd HH:mm:ss\} %-5p] [%t] {%c:%L}-%m%n" />  
+         </layout>  
+         <filter class="org.apache.log4j.varia.LevelRangeFilter">  
+            <param name="LevelMin" value="debug" />  
+             <param name="LevelMax" value="info" />  
+            <param name="AcceptOnMatch" value="false" />  
+        </filter>  
+     </appender>  
+ 
+ 
+    <appender name="dailyappender" class="org.apache.log4j.DailyRollingFileAppender">  
+         <param name="Encoding" value="UTF-8"/>
+         <param name="File" value="${catalina.home}/../logs/daily.log" />   
+         <param name="DatePattern" value="'.'yyyy-MM-dd'.log'" />   
+         <layout class="org.apache.log4j.PatternLayout">  
+             <param name="ConversionPattern" value="[%d{yyyy-MM-dd HH:mm:ss\} %-5p] [%t] {%c:%L}-%m%n" />  
+         </layout>   
+    </appender>  
+     <appender name="dailyappender2" class="org.apache.log4j.DailyRollingFileAppender">
+        <param name="File" value="${catalina.home}/../logs/app.log"/>
+        <param name="Encoding" value="UTF-8" />
+        <param name="DatePattern" value="'.'yyyy-MM-dd'.log'" />  
+        <layout class="org.apache.log4j.PatternLayout">  
+            <param name="ConversionPattern" value="[%d{yyyy-MM-dd HH:mm:ss\} %-5p] [%t] {%c:%L}-%m%n" />  
+        </layout>   
+    </appender>
+ 
+     <logger name="com.errout">  
+         <level value="info" />  
+     </logger>  
+  
+   
+     <!-- Root Logger -->  
+    <root>  
+        <priority value="info" />  
+        <appender-ref ref="CONSOLE.ERR" />  
+        <appender-ref ref="CONSOLE.OUT" />  
+        <appender-ref ref="dailyappender2" />   
+     </root>  
+ 
+ </log4j:configuration>  

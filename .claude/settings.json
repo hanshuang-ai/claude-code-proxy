@@ -1,0 +1,118 @@
+{
+  "description": "项目 hooks 说明：\nPreToolUse：工具执行前触发，可基于参数阻止或调整调用。\nPostToolUse：工具成功执行后触发，常用于格式化、校验或记录结果。\nUserPromptSubmit：用户提交提示前触发，可进行提示校验或增强。\nNotification：当系统发送通知（需授权或等待输入）时触发。\nStop：主代理完成响应时触发（用户中断不触发）。\nSubagentStop：子代理任务完成时触发，用于记录子任务结束。\nPreCompact(manual/auto)：压缩操作前触发，区分手动与自动。\nSessionStart(startup|resume|clear|compact)：会话启动/恢复/清空/压缩触发的启动。\nSessionEnd：会话结束时触发，用于收尾与清理。\n文档：https://docs.claude.com/zh-CN/docs/claude-code/hooks",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./.claude/hooks/event_logger.js PreToolUse",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./.claude/hooks/event_logger.js PostToolUse",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./.claude/hooks/event_logger.js UserPromptSubmit",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./.claude/hooks/event_logger.js Notification",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./.claude/hooks/event_logger.js Stop",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./.claude/hooks/event_logger.js SubagentStop",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "manual",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./.claude/hooks/event_logger.js PreCompact manual",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./.claude/hooks/event_logger.js PreCompact auto",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./.claude/hooks/event_logger.js SessionStart",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./.claude/hooks/event_logger.js SessionEnd",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
