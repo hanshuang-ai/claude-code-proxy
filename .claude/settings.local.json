@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.12306.cn)",
+      "WebFetch(domain:trains.ctrip.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
