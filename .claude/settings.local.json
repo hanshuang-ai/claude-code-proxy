@@ -4,7 +4,8 @@
       "WebSearch",
       "WebFetch(domain:www.12306.cn)",
       "WebFetch(domain:trains.ctrip.com)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
