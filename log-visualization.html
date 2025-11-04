@@ -896,13 +896,36 @@
                     `从 ${firstTime.start} 到 ${lastTime.end}`;
             }
 
-            // 计算处理时间范围 - 使用每个请求的实际时间差
-            const actualTimes = requestsData.map(req => {
+            // 计算处理时间范围 - 使用每个请求的实际时间差，包含所有有效时间
+            console.log('========== 计算处理时间范围 ==========');
+            const actualTimes = requestsData.map((req, index) => {
+                console.log(`处理请求 #${req.id}:`);
+                console.log('- 开始时间:', req.requestStartTime);
+                console.log('- 结束时间:', req.requestEndTime);
+                console.log('- 处理时间:', req.processTime);
+
+                let calculatedTime = 0;
                 if (req.requestStartTime && req.requestEndTime) {
-                    return calculateTimeDifferenceInSeconds(req.requestStartTime, req.requestEndTime);
+                    calculatedTime = calculateTimeDifferenceInSeconds(req.requestStartTime, req.requestEndTime);
+                    console.log('- 计算的时间差:', calculatedTime, '秒');
+                } else {
+                    // 如果没有开始和结束时间，尝试从处理时间获取
+                    if (req.processTime && req.processTime.endsWith('s')) {
+                        const processTimeNum = parseFloat(req.processTime.replace('s', ''));
+                        if (!isNaN(processTimeNum) && processTimeNum > 0) {
+                            calculatedTime = processTimeNum;
+                            console.log('- 从处理时间获取:', calculatedTime, '秒');
+                        }
+                    }
                 }
-                return 0;
-            }).filter(time => time > 0);
+
+                console.log('- 最终时间差:', calculatedTime, '秒');
+                return calculatedTime;
+            }).filter(time => time >= 0); // 包含0和有效时间
+
+            console.log('所有有效时间差:', actualTimes);
+            console.log('有效时间差数量:', actualTimes.length);
+            console.log('============================');
 
             if (actualTimes.length > 0) {
                 const minTime = Math.min(...actualTimes);

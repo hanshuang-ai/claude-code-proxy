@@ -372,3 +372,11 @@
 0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:40:44 +0800] "POST /proxy/v1/messages/count_tokens?beta=true HTTP/1.1" 200 22
 0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:40:55 +0800] "POST /proxy/v1/messages?beta=true HTTP/1.1" 200 5682
 0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:41:04 +0800] "POST /proxy/v1/messages?beta=true HTTP/1.1" 200 3744
+0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:46:47 +0800] "POST /proxy/v1/messages/count_tokens?beta=true HTTP/1.1" 200 22
+0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:47:04 +0800] "POST /proxy/v1/messages?beta=true HTTP/1.1" 200 4099
+0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:47:13 +0800] "POST /proxy/v1/messages?beta=true HTTP/1.1" 200 3337
+0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:47:23 +0800] "POST /proxy/v1/messages?beta=true HTTP/1.1" 200 3883
+0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:52:34 +0800] "POST /proxy/v1/messages?beta=true HTTP/1.1" 200 1135
+0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:52:37 +0800] "POST /proxy/v1/messages?beta=true HTTP/1.1" 200 9567
+0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:52:45 +0800] "POST /proxy/v1/messages?beta=true HTTP/1.1" 200 5373
+0:0:0:0:0:0:0:1 - - [04/Nov/2025:19:52:46 +0800] "POST /proxy/v1/messages?beta=true HTTP/1.1" 200 24733
