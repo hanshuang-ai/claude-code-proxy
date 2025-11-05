@@ -260,12 +260,14 @@
             padding: 15px;
             font-family: 'Courier New', monospace;
             font-size: 0.9rem;
-            background: #2d3748;
-            color: #e2e8f0;
+            background: #1a1a1a;
+            color: #ffffff;
             overflow-y: auto;
             white-space: pre-wrap;
-            line-height: 1.5;
+            line-height: 1.6;
             min-height: 100px;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .toggle-icon {
@@ -284,6 +286,25 @@
         .part-content {
             word-wrap: break-word;
             overflow-wrap: break-word;
+        }
+
+        /* 自定义滚动条样式 */
+        .part-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .part-content::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        .part-content::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 4px;
+        }
+
+        .part-content::-webkit-scrollbar-thumb:hover {
+            background: #5a5a5a;
         }
 
         .error-message {
@@ -1043,13 +1064,13 @@
                         const headerName = line.substring(0, colonIndex);
                         const headerValue = line.substring(colonIndex + 1);
 
-                        formatted += `<span style="color: #4CAF50; font-weight: bold;">${escapeHtml(headerName.trim())}</span>:<span style="color: #2196F3;">${escapeHtml(headerValue.trim())}</span>\n`;
+                        formatted += `<span style="color: #67E8F9; font-weight: bold;">${escapeHtml(headerName.trim())}</span>:<span style="color: #A5F3FC;">${escapeHtml(headerValue.trim())}</span>\n`;
                     } else {
                         // 处理其他行（如HTTP状态行）
                         if (line.includes('HTTP/')) {
-                            formatted += `<span style="color: #FF9800; font-weight: bold;">${escapeHtml(line.trim())}</span>\n`;
+                            formatted += `<span style="color: #FBBF24; font-weight: bold;">${escapeHtml(line.trim())}</span>\n`;
                         } else {
-                            formatted += `<span style="color: #ccc;">${escapeHtml(line.trim())}</span>\n`;
+                            formatted += `<span style="color: #D1D5DB;">${escapeHtml(line.trim())}</span>\n`;
                         }
                     }
                 }
@@ -1097,7 +1118,7 @@
                 const keys = Object.keys(obj);
                 keys.forEach((key, index) => {
                     result += spaces + '  ';
-                    result += `<span style="color: #9C27B0;">"${escapeHtml(key)}"</span>: `;
+                    result += `<span style="color: #C084FC;">"${escapeHtml(key)}"</span>: `;
 
                     if (typeof obj[key] === 'object' && obj[key] !== null) {
                         result += formatJson(obj[key], indent + 1);
@@ -1121,17 +1142,17 @@
             if (typeof value === 'string') {
                 // 检查是否是URL
                 if (value.startsWith('http://') || value.startsWith('https://')) {
-                    return `<a href="${escapeHtml(value)}" target="_blank" style="color: #2196F3; text-decoration: underline;">"${escapeHtml(value)}"</a>`;
+                    return `<a href="${escapeHtml(value)}" target="_blank" style="color: #60A5FA; text-decoration: underline;">"${escapeHtml(value)}"</a>`;
                 }
-                return `<span style="color: #4CAF50;">"${escapeHtml(value)}"</span>`;
+                return `<span style="color: #86EFAC;">"${escapeHtml(value)}"</span>`;
             } else if (typeof value === 'number') {
-                return `<span style="color: #FF9800;">${value}</span>`;
+                return `<span style="color: #FCD34D;">${value}</span>`;
             } else if (typeof value === 'boolean') {
-                return `<span style="color: #F44336;">${value}</span>`;
+                return `<span style="color: #F87171;">${value}</span>`;
             } else if (value === null) {
-                return `<span style="color: #9E9E9E;">null</span>`;
+                return `<span style="color: #9CA3AF;">null</span>`;
             } else {
-                return `<span style="color: #666;">${value}</span>`;
+                return `<span style="color: #E5E7EB;">${value}</span>`;
             }
         }
 
