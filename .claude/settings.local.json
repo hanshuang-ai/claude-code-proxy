@@ -5,7 +5,9 @@
       "WebFetch(domain:www.12306.cn)",
       "WebFetch(domain:trains.ctrip.com)",
       "Bash(awk:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
