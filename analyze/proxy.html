@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP请求日志可视化分析</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-description {
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        .requests-1 { color: #FF6B6B; }
+        .requests-17 { color: #4ECDC4; }
+        .time-2min { color: #45B7D1; }
+        .performance { color: #96CEB4; }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .section-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .request-item, .response-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .request-item {
+            border-left-color: #FF6B6B;
+        }
+
+        .response-item {
+            border-left-color: #4ECDC4;
+        }
+
+        .item-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .item-content {
+            font-family: 'Courier New', monospace;
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .toggle-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            transition: background 0.3s ease;
+        }
+
+        .toggle-btn:hover {
+            background: #5a67d8;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .requests-container {
+            display: grid;
+            gap: 30px;
+        }
+
+        .request-group {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .request-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .request-meta {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .process-time {
+            background: #e8f5e8;
+            color: #2d7a2d;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .log-id {
+            background: #f0f4ff;
+            color: #4a5568;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-family: monospace;
+        }
+
+        .request-parts {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .part-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .part-header {
+            background: #667eea;
+            color: white;
+            padding: 12px 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .part-header:hover {
+            background: #5a67d8;
+        }
+
+        .part-header.request-header-part {
+            background: #FF6B6B;
+        }
+
+        .part-header.request-header-part:hover {
+            background: #ff5252;
+        }
+
+        .part-header.response-header-part {
+            background: #4ECDC4;
+        }
+
+        .part-header.response-header-part:hover {
+            background: #3db8af;
+        }
+
+        .part-content {
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            background: #1a1a1a;
+            color: #ffffff;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            min-height: 100px;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-icon.rotated {
+            transform: rotate(180deg);
+        }
+
+        .part-content.hidden {
+            display: none;
+        }
+
+        /* 确保内容完全显示，不换行 */
+        .part-content {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* 自定义滚动条样式 */
+        .part-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .part-content::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        .part-content::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 4px;
+        }
+
+        .part-content::-webkit-scrollbar-thumb:hover {
+            background: #5a5a5a;
+        }
+
+        .error-message {
+            background: #fff5f5;
+            border: 2px solid #fc8181;
+            color: #c53030;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.1rem;
+            margin: 20px 0;
+        }
+
+        /* 文件上传组件样式 */
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .upload-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+
+        .upload-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .upload-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 2px dashed #e2e8f0;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #edf2f7;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.7;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-bottom: 20px;
+        }
+
+        .upload-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f7fafc;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #4a5568;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .clear-btn {
+            background: #fc8181;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .clear-btn:hover {
+            background: #f56565;
+            transform: scale(1.1);
+        }
+
+        /* 消息提示样式 */
+        .upload-message {
+            margin-top: 15px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        .upload-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .upload-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>HTTP请求日志可视化分析</h1>
+        </div>
+
+        <!-- 文件上传组件 -->
+        <div class="upload-section">
+            <div class="upload-card">
+                <div class="upload-header">
+                    <span>📁 选择日志文件</span>
+                </div>
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-content">
+                        <div class="upload-icon">📄</div>
+                        <p class="upload-text">点击选择文件或拖拽文件到此处</p>
+                        <p class="upload-hint">支持 .log .txt 格式的日志文件，最大50MB</p>
+                        <input type="file" id="file-input" accept=".log,.txt" style="display: none;">
+                        <button class="upload-btn" onclick="document.getElementById('file-input').click()">选择文件</button>
+                    </div>
+                </div>
+                <div class="file-info" id="file-info" style="display: none;">
+                    <span class="file-name" id="file-name"></span>
+                    <button class="clear-btn" onclick="clearFile()">✕</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number requests-17">0</div>
+                <div class="stat-label">总请求次数</div>
+                <div class="stat-description">HTTP请求组合总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number time-span">00:00:00</div>
+                <div class="stat-label">执行时间跨度</div>
+                <div class="stat-description">从首次到最后一次请求</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number performance">0.00-0.00s</div>
+                <div class="stat-label">处理时间范围</div>
+                <div class="stat-description">平均响应时间约0.00秒</div>
+            </div>
+        </div>
+
+        <div class="requests-container" id="requests-container">
+            <h2 class="section-title" style="color: white; text-align: center; margin-bottom: 30px;">所有17个HTTP请求组合</h2>
+        </div>
+    </div>
+
+    <script>
+        // 解析日志文件的函数
+        function parseLogFile(logContent) {
+            const lines = logContent.split('\n');
+            const requests = [];
+            let globalTimeSpans = []; // 存储所有时间跨度
+
+            // 第一步：按分隔线和时间日志进行分组
+            const groups = parseIntoGroups(lines);
+            console.log('解析到的分组数量:', groups.length);
+
+            // 第二步：每8个组合并成一个HTTP请求
+            for (let i = 0; i < groups.length; i += 8) {
+                const eightGroups = groups.slice(i, i + 8);
+
+                if (eightGroups.length >= 8) {
+                    const request = combineGroupsToRequest(eightGroups, i / 8 + 1);
+                    if (request) {
+                        requests.push(request);
+
+                        // 收集时间跨度
+                        if (request.requestStartTime && request.requestEndTime) {
+                            globalTimeSpans.push({
+                                start: request.requestStartTime,
+                                end: request.requestEndTime
+                            });
+                        }
+                    }
+                }
+            }
+
+            console.log('组合成的HTTP请求数量:', requests.length);
+            return { requests, timeSpans: globalTimeSpans };
+        }
+
+        // 按分隔线和时间日志进行分组
+        function parseIntoGroups(lines) {
+            const groups = [];
+            let currentGroup = [];
+            let groupCount = 0;
+
+            // 时间日志的正则表达式 [时间 INFO]
+            const timeLogRegex = /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \w+\s*\]/;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const trimmedLine = line.trim();
+
+                // 检查是否是分隔线（独占一行）或者时间日志行
+                if (trimmedLine === '--------------------------------------------------------------------------------------' || timeLogRegex.test(trimmedLine)) {
+                    // 如果当前组有内容，保存它
+                    if (currentGroup.length > 0) {
+                        groups.push({
+                            id: ++groupCount,
+                            content: currentGroup.join('\n'),
+                            lineCount: currentGroup.length,
+                            startLine: i - currentGroup.length + 1,
+                            endLine: i - 1
+                        });
+                        currentGroup = [];
+                    }
+
+                    // 如果是分隔线，不加入新组
+                    if (trimmedLine !== '--------------------------------------------------------------------------------------') {
+                        currentGroup.push(line);
+                    }
+                } else {
+                    currentGroup.push(line);
+                }
+            }
+
+            // 添加最后一个组（如果没有以分隔线结尾）
+            if (currentGroup.length > 0) {
+                groups.push({
+                    id: ++groupCount,
+                    content: currentGroup.join('\n'),
+                    lineCount: currentGroup.length,
+                    startLine: lines.length - currentGroup.length + 1,
+                    endLine: lines.length
+                });
+            }
+
+            return groups;
+        }
+
+        // 将8个组合并成一个HTTP请求
+        function combineGroupsToRequest(eightGroups, requestId) {
+            if (eightGroups.length < 8) {
+                console.warn('分组数量不足8个，无法组成完整HTTP请求');
+                return null;
+            }
+
+            // 按顺序分配：12-Request Header, 34-Request Body, 56-Response Header, 78-Response Body
+            const requestHeaderContent = eightGroups.slice(0, 2).map(g => g.content).join('\n');
+            const requestBodyContent = eightGroups.slice(2, 4).map(g => g.content).join('\n');
+            const responseHeaderContent = eightGroups.slice(4, 6).map(g => g.content).join('\n');
+            const responseBodyContent = eightGroups.slice(6, 8).map(g => g.content).join('\n');
+
+            // 解析时间信息
+            const { startTime, endTime, processTime, logId } = extractTimeInfo(
+                requestHeaderContent, requestBodyContent, responseHeaderContent, responseBodyContent
+            );
+
+            return {
+                id: requestId,
+                logId: logId || `LOG-${requestId}`,
+                processTime: processTime,
+                requestHeader: requestHeaderContent,
+                requestBody: requestBodyContent,
+                responseHeader: responseHeaderContent,
+                responseBody: responseBodyContent,
+                requestStartTime: startTime,
+                requestEndTime: endTime
+            };
+        }
+
+        // 从内容中提取时间信息
+        function extractTimeInfo(requestHeader, requestBody, responseHeader, responseBody) {
+            let startTime = '';
+            let endTime = '';
+            let processTime = '';
+            let logId = '';
+
+            console.log('========== 提取时间信息 ==========');
+            console.log('Request Header内容长度:', requestHeader.length);
+            console.log('Request Body内容长度:', requestBody.length);
+            console.log('Response Header内容长度:', responseHeader.length);
+            console.log('Response Body内容长度:', responseBody.length);
+
+            // 优先从Request Header中提取时间信息
+            if (requestHeader) {
+                const requestLines = requestHeader.split('\n');
+                console.log('Request Header行数:', requestLines.length);
+
+                for (const line of requestLines) {
+                    console.log('检查行:', line);
+                    if (line.includes('请求开始时间:')) {
+                        startTime = line.split('请求开始时间:')[1]?.trim() || '';
+                        console.log('找到开始时间:', startTime);
+                    }
+                    if (line.includes('结果返回时间:')) {
+                        endTime = line.split('结果返回时间:')[1]?.trim() || '';
+                        console.log('找到结束时间:', endTime);
+                    }
+                    if (line.includes('x-process-time')) {
+                        const timeMatch = line.match(/x-process-time\s+(\d+\.?\d*)/);
+                        if (timeMatch) {
+                            processTime = parseFloat(timeMatch[1]).toFixed(2) + 's';
+                            console.log('找到处理时间:', processTime);
+                        }
+                    }
+                }
+            }
+
+            // 如果Request Header中没找到，再从其他部分查找
+            if (!startTime || !endTime) {
+                console.log('从Request Header未找到完整时间信息，搜索其他部分...');
+                const allContent = [requestBody, responseHeader, responseBody].join('\n');
+                const lines = allContent.split('\n');
+
+                for (const line of lines) {
+                    if (!startTime && line.includes('请求开始时间:')) {
+                        startTime = line.split('请求开始时间:')[1]?.trim() || '';
+                        console.log('从其他部分找到开始时间:', startTime);
+                    }
+                    if (!endTime && line.includes('结果返回时间:')) {
+                        endTime = line.split('结果返回时间:')[1]?.trim() || '';
+                        console.log('从其他部分找到结束时间:', endTime);
+                    }
+                    if (!processTime && line.includes('x-process-time')) {
+                        const timeMatch = line.match(/x-process-time\s+(\d+\.?\d*)/);
+                        if (timeMatch) {
+                            processTime = parseFloat(timeMatch[1]).toFixed(2) + 's';
+                            console.log('从其他部分找到处理时间:', processTime);
+                        }
+                    }
+                }
+            }
+
+            // 从Response Header中提取X-LOG-ID
+            if (responseHeader) {
+                const logIdMatch = responseHeader.match(/X-LOG-ID\s+(.+)/);
+                if (logIdMatch) {
+                    logId = logIdMatch[1].trim();
+                    console.log('找到LOG-ID:', logId);
+                }
+            }
+
+            console.log('最终提取结果:');
+            console.log('- 开始时间:', startTime);
+            console.log('- 结束时间:', endTime);
+            console.log('- 处理时间:', processTime);
+            console.log('- LOG-ID:', logId);
+            console.log('============================');
+
+            return { startTime, endTime, processTime, logId };
+        }
+
+        // 加载和解析日志文件
+        let requestsData = [];
+        let timeSpansData = [];
+        let currentFileName = '';
+
+        function loadLogFile() {
+            // 不再自动加载默认文件，显示提示用户上传文件
+            $('#requests-container').html('<div class="error-message">请上传日志文件进行分析</div>');
+        }
+
+        function loadFileContent(fileContent, fileName) {
+            console.log('========== 开始解析文件 ==========');
+            console.log('文件名:', fileName);
+
+            try {
+                console.log('调用parseLogFile函数...');
+                const result = parseLogFile(fileContent);
+
+                console.log('========== 解析结果 ==========');
+                console.log('解析到的请求数量:', result.requests.length);
+                console.log('解析到的时间跨度数量:', result.timeSpans.length);
+
+                if (result.requests.length > 0) {
+                    console.log('第一个请求预览:');
+                    const firstRequest = result.requests[0];
+                    console.log('- 请求ID:', firstRequest.id);
+                    console.log('- LOG-ID:', firstRequest.logId);
+                    console.log('- 处理时间:', firstRequest.processTime);
+                    console.log('- 开始时间:', firstRequest.requestStartTime);
+                    console.log('- 结束时间:', firstRequest.requestEndTime);
+                    console.log('- Request Header长度:', firstRequest.requestHeader.length);
+                    console.log('- Request Body长度:', firstRequest.requestBody.length);
+                    console.log('- Response Header长度:', firstRequest.responseHeader.length);
+                    console.log('- Response Body长度:', firstRequest.responseBody.length);
+                }
+
+                if (result.timeSpans.length > 0) {
+                    console.log('时间跨度预览:');
+                    console.log('- 第一个时间跨度:', result.timeSpans[0]);
+                    console.log('- 最后一个时间跨度:', result.timeSpans[result.timeSpans.length - 1]);
+                }
+
+                console.log('============================');
+
+                requestsData = result.requests;
+                timeSpansData = result.timeSpans;
+                currentFileName = fileName;
+
+                console.log('开始渲染界面...');
+                // 清空容器并重新渲染
+                $('#requests-container').empty();
+                renderRequests();
+                updateStatistics();
+
+                console.log('界面渲染完成！');
+                // 显示成功提示
+                showSuccessMessage(`成功加载文件: ${fileName}`);
+            } catch (error) {
+                console.error('========== 解析失败 ==========');
+                console.error('文件名:', fileName);
+                console.error('错误信息:', error.message);
+                console.error('错误堆栈:', error.stack);
+                console.error('============================');
+                showErrorMessage(`解析文件失败: ${error.message}`);
+            }
+        }
+
+        function toggleContent(partId) {
+            const content = document.getElementById(partId);
+            const icon = document.getElementById('icon-' + partId);
+
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.classList.add('rotated');
+            } else {
+                content.classList.add('hidden');
+                icon.classList.remove('rotated');
+            }
+        }
+
+        function createRequestGroup(request, index) {
+            const partIdPrefix = `request-${request.id}`;
+
+            // 计算真实处理时间
+            let actualProcessTime = request.processTime;
+            if (request.requestStartTime && request.requestEndTime) {
+                const timeDiff = calculateTimeDifferenceInSeconds(request.requestStartTime, request.requestEndTime);
+                actualProcessTime = timeDiff.toFixed(2) + 's';
+            }
+
+            return `
+                <div class="request-group">
+                    <div class="request-header">
+                        <div class="request-number">请求 #${request.id}</div>
+                        <div class="request-meta">
+                            <div class="process-time">处理时间: ${actualProcessTime}</div>
+                            <div class="log-id">LOG-ID: ${request.logId}</div>
+                        </div>
+                    </div>
+                    ${request.requestStartTime && request.requestEndTime ? `
+                    <div class="request-time-info" style="font-size: 0.8rem; color: #666; margin-bottom: 15px; text-align: center;">
+                        开始时间: ${request.requestStartTime} | 结束时间: ${request.requestEndTime}
+                    </div>
+                    ` : ''}
+                    <div class="request-parts">
+                        <div class="part-card">
+                            <div class="part-header request-header-part" onclick="toggleContent('${partIdPrefix}-req-header')">
+                                <span>Request Header</span>
+                                <span class="toggle-icon" id="icon-${partIdPrefix}-req-header">▼</span>
+                            </div>
+                            <div class="part-content hidden" id="${partIdPrefix}-req-header">${formatContent(request.requestHeader, 'requestHeader')}</div>
+                        </div>
+                        <div class="part-card">
+                            <div class="part-header" onclick="toggleContent('${partIdPrefix}-req-body')">
+                                <span>Request Body</span>
+                                <span class="toggle-icon" id="icon-${partIdPrefix}-req-body">▼</span>
+                            </div>
+                            <div class="part-content hidden" id="${partIdPrefix}-req-body">${formatContent(request.requestBody, 'requestBody')}</div>
+                        </div>
+                        <div class="part-card">
+                            <div class="part-header response-header-part" onclick="toggleContent('${partIdPrefix}-res-header')">
+                                <span>Response Header</span>
+                                <span class="toggle-icon" id="icon-${partIdPrefix}-res-header">▼</span>
+                            </div>
+                            <div class="part-content hidden" id="${partIdPrefix}-res-header">${formatContent(request.responseHeader, 'responseHeader')}</div>
+                        </div>
+                        <div class="part-card">
+                            <div class="part-header" onclick="toggleContent('${partIdPrefix}-res-body')">
+                                <span>Response Body</span>
+                                <span class="toggle-icon" id="icon-${partIdPrefix}-res-body">▼</span>
+                            </div>
+                            <div class="part-content hidden" id="${partIdPrefix}-res-body">${formatContent(request.responseBody, 'responseBody')}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 渲染所有请求
+        function renderRequests() {
+            const container = document.getElementById('requests-container');
+            container.innerHTML = '<h2 class="section-title" style="color: white; text-align: center; margin-bottom: 30px;">所有' + requestsData.length + '个HTTP请求组合</h2>';
+
+            requestsData.forEach((request, index) => {
+                const requestHtml = createRequestGroup(request, index);
+                container.insertAdjacentHTML('beforeend', requestHtml);
+            });
+
+            // 添加加载动画
+            const cards = document.querySelectorAll('.request-group');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 50);
+            });
+        }
+
+        // 更新统计信息
+        function updateStatistics() {
+            if (requestsData.length === 0) return;
+
+            // 更新总请求次数
+            document.querySelector('.requests-17').textContent = requestsData.length;
+
+            // 计算执行时间跨度
+            if (timeSpansData.length > 0) {
+                const firstTime = timeSpansData[0];
+                const lastTime = timeSpansData[timeSpansData.length - 1];
+
+                // 计算时间差
+                const timeDiff = calculateTimeDifference(firstTime.start, lastTime.end);
+                document.querySelector('.time-span').textContent = timeDiff;
+
+                // 更新描述
+                document.querySelector('.time-span').parentElement.querySelector('.stat-description').textContent =
+                    `从 ${firstTime.start} 到 ${lastTime.end}`;
+            }
+
+            // 计算处理时间范围 - 使用每个请求的实际时间差，包含所有有效时间
+            console.log('========== 计算处理时间范围 ==========');
+            const actualTimes = requestsData.map((req, index) => {
+                console.log(`处理请求 #${req.id}:`);
+                console.log('- 开始时间:', req.requestStartTime);
+                console.log('- 结束时间:', req.requestEndTime);
+                console.log('- 处理时间:', req.processTime);
+
+                let calculatedTime = 0;
+                if (req.requestStartTime && req.requestEndTime) {
+                    calculatedTime = calculateTimeDifferenceInSeconds(req.requestStartTime, req.requestEndTime);
+                    console.log('- 计算的时间差:', calculatedTime, '秒');
+                } else {
+                    // 如果没有开始和结束时间，尝试从处理时间获取
+                    if (req.processTime && req.processTime.endsWith('s')) {
+                        const processTimeNum = parseFloat(req.processTime.replace('s', ''));
+                        if (!isNaN(processTimeNum) && processTimeNum > 0) {
+                            calculatedTime = processTimeNum;
+                            console.log('- 从处理时间获取:', calculatedTime, '秒');
+                        }
+                    }
+                }
+
+                console.log('- 最终时间差:', calculatedTime, '秒');
+                return calculatedTime;
+            }).filter(time => time >= 0); // 包含0和有效时间
+
+            console.log('所有有效时间差:', actualTimes);
+            console.log('有效时间差数量:', actualTimes.length);
+            console.log('============================');
+
+            if (actualTimes.length > 0) {
+                const minTime = Math.min(...actualTimes);
+                const maxTime = Math.max(...actualTimes);
+                document.querySelector('.performance').textContent = `${minTime.toFixed(2)}-${maxTime.toFixed(2)}s`;
+
+                // 更新平均响应时间描述
+                const avgTime = (actualTimes.reduce((a,b) => a+b, 0) / actualTimes.length).toFixed(2);
+                document.querySelector('.performance').parentElement.querySelector('.stat-description').textContent =
+                    `平均响应时间约${avgTime}秒`;
+            }
+        }
+
+        // 计算时间差（返回秒数）
+        function calculateTimeDifferenceInSeconds(startTime, endTime) {
+            console.log('========== 计算时间差 ==========');
+            console.log('开始时间:', startTime);
+            console.log('结束时间:', endTime);
+
+            // 解析时间格式，支持 YYYY-MM-DD HH:MM:SS 格式
+            const parseTime = (timeStr) => {
+                // 如果时间字符串包含日期部分
+                if (timeStr.includes('-')) {
+                    // 格式: YYYY-MM-DD HH:MM:SS
+                    const dateTimeMatch = timeStr.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+                    if (dateTimeMatch) {
+                        const [, year, month, day, hours, minutes, seconds] = dateTimeMatch;
+                        const date = new Date(`${year}-${month}-${day}T${hours}:${minutes}:${seconds}`);
+                        console.log('解析完整日期时间:', date.getTime(), 'ms');
+                        return date.getTime() / 1000; // 转换为秒
+                    }
+                }
+
+                // 如果只是 HH:MM:SS 格式
+                const timeMatch = timeStr.match(/(\d{2}):(\d{2}):(\d{2})/);
+                if (timeMatch) {
+                    const [, hours, minutes, seconds] = timeMatch;
+                    const totalSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
+                    console.log('解析时间部分:', totalSeconds, '秒');
+                    return totalSeconds;
+                }
+
+                console.log('无法解析时间格式:', timeStr);
+                return 0;
+            };
+
+            const startTimestamp = parseTime(startTime);
+            const endTimestamp = parseTime(endTime);
+
+            console.log('开始时间戳:', startTimestamp);
+            console.log('结束时间戳:', endTimestamp);
+
+            // 计算时间差（秒）
+            let diff = endTimestamp - startTimestamp;
+
+            // 如果是时间部分（小于86400秒）且结果为负数，说明跨天了
+            if (Math.abs(startTimestamp) < 86400 && Math.abs(endTimestamp) < 86400 && diff < 0) {
+                diff += 24 * 3600; // 加一天的时间
+                console.log('检测到跨天，调整时间差:', diff, '秒');
+            }
+
+            console.log('最终时间差:', diff, '秒');
+            console.log('============================');
+
+            return diff;
+        }
+
+        // 计算时间差（返回格式化字符串）
+        function calculateTimeDifference(startTime, endTime) {
+            const diff = calculateTimeDifferenceInSeconds(startTime, endTime);
+
+            const hours = Math.floor(diff / 3600);
+            const minutes = Math.floor((diff % 3600) / 60);
+            const seconds = diff % 60;
+
+            // 格式化输出
+            if (hours > 0) {
+                return `${hours}小时${minutes}分${seconds}秒`;
+            } else if (minutes > 0) {
+                return `${minutes}分${seconds}秒`;
+            } else {
+                return `${seconds}秒`;
+            }
+        }
+
+        // 格式化显示内容
+        function formatContent(content, type) {
+            if (!content || content.trim() === '') {
+                return '<span style="color: #999;">(无内容)</span>';
+            }
+
+            // 根据类型进行不同的格式化
+            switch(type) {
+                case 'requestHeader':
+                case 'responseHeader':
+                    return formatHeaders(content);
+                case 'requestBody':
+                case 'responseBody':
+                    return formatBody(content);
+                default:
+                    return escapeHtml(content);
+            }
+        }
+
+        // 格式化HTTP头部
+        function formatHeaders(content) {
+            const lines = content.split('\n');
+            let formatted = '';
+
+            lines.forEach(line => {
+                if (line.trim()) {
+                    // 查找包含冒号的行（标准的HTTP头部格式）
+                    if (line.includes(':')) {
+                        const colonIndex = line.indexOf(':');
+                        const headerName = line.substring(0, colonIndex);
+                        const headerValue = line.substring(colonIndex + 1);
+
+                        formatted += `<span style="color: #67E8F9; font-weight: bold;">${escapeHtml(headerName.trim())}</span>:<span style="color: #A5F3FC;">${escapeHtml(headerValue.trim())}</span>\n`;
+                    } else {
+                        // 处理其他行（如HTTP状态行）
+                        if (line.includes('HTTP/')) {
+                            formatted += `<span style="color: #FBBF24; font-weight: bold;">${escapeHtml(line.trim())}</span>\n`;
+                        } else {
+                            formatted += `<span style="color: #D1D5DB;">${escapeHtml(line.trim())}</span>\n`;
+                        }
+                    }
+                }
+            });
+
+            return formatted;
+        }
+
+        // 格式化请求/响应体
+        function formatBody(content) {
+            try {
+                // 尝试解析为JSON
+                const jsonData = JSON.parse(content);
+                return formatJson(jsonData);
+            } catch (e) {
+                // 如果不是JSON，检查是否包含JSON片段
+                if (content.includes('{') && content.includes('}')) {
+                    return tryFormatPartialJson(content);
+                }
+                // 如果不是JSON，直接返回转义后的内容
+                return escapeHtml(content);
+            }
+        }
+
+        // 格式化JSON对象
+        function formatJson(obj, indent = 0) {
+            const spaces = '  '.repeat(indent);
+            let result = '';
+
+            if (Array.isArray(obj)) {
+                result += '[\n';
+                obj.forEach((item, index) => {
+                    result += spaces + '  ';
+                    if (typeof item === 'object' && item !== null) {
+                        result += formatJson(item, indent + 1);
+                    } else {
+                        result += formatJsonValue(item);
+                    }
+                    if (index < obj.length - 1) result += ',';
+                    result += '\n';
+                });
+                result += spaces + ']';
+            } else if (typeof obj === 'object' && obj !== null) {
+                result += '{\n';
+                const keys = Object.keys(obj);
+                keys.forEach((key, index) => {
+                    result += spaces + '  ';
+                    result += `<span style="color: #C084FC;">"${escapeHtml(key)}"</span>: `;
+
+                    if (typeof obj[key] === 'object' && obj[key] !== null) {
+                        result += formatJson(obj[key], indent + 1);
+                    } else {
+                        result += formatJsonValue(obj[key]);
+                    }
+
+                    if (index < keys.length - 1) result += ',';
+                    result += '\n';
+                });
+                result += spaces + '}';
+            } else {
+                result += formatJsonValue(obj);
+            }
+
+            return result;
+        }
+
+        // 格式化JSON值
+        function formatJsonValue(value) {
+            if (typeof value === 'string') {
+                // 检查是否是URL
+                if (value.startsWith('http://') || value.startsWith('https://')) {
+                    return `<a href="${escapeHtml(value)}" target="_blank" style="color: #60A5FA; text-decoration: underline;">"${escapeHtml(value)}"</a>`;
+                }
+                return `<span style="color: #86EFAC;">"${escapeHtml(value)}"</span>`;
+            } else if (typeof value === 'number') {
+                return `<span style="color: #FCD34D;">${value}</span>`;
+            } else if (typeof value === 'boolean') {
+                return `<span style="color: #F87171;">${value}</span>`;
+            } else if (value === null) {
+                return `<span style="color: #9CA3AF;">null</span>`;
+            } else {
+                return `<span style="color: #E5E7EB;">${value}</span>`;
+            }
+        }
+
+        // 尝试格式化部分JSON内容
+        function tryFormatPartialJson(content) {
+            let result = escapeHtml(content);
+
+            // 尝试匹配JSON对象并格式化
+            const jsonRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+            result = result.replace(jsonRegex, (match) => {
+                try {
+                    const jsonObj = JSON.parse(match);
+                    return formatJson(jsonObj);
+                } catch (e) {
+                    return match;
+                }
+            });
+
+            return result;
+        }
+
+        // HTML转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 文件上传相关函数
+        function setupFileUpload() {
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+
+            // 点击上传区域触发文件选择（但不包括按钮）
+            uploadArea.addEventListener('click', function(event) {
+                // 如果点击的是按钮，不处理
+                if (event.target.tagName === 'BUTTON' || event.target.closest('button')) {
+                    return;
+                }
+                console.log('上传区域被点击');
+                fileInput.click();
+            });
+
+            // 文件选择事件
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // 拖拽事件
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleDrop);
+
+            console.log('文件上传事件设置完成');
+        }
+
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        }
+
+        function handleFileSelect(event) {
+            console.log('文件选择事件触发', event.target.files.length); // 添加调试日志
+            const files = event.target.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const file = files[0];
+
+            // 打印文件详细信息
+            console.log('========== 文件信息 ==========');
+            console.log('文件名:', file.name);
+            console.log('文件大小:', file.size, 'bytes');
+            console.log('文件类型:', file.type);
+            console.log('最后修改时间:', new Date(file.lastModified).toLocaleString());
+            console.log('文件扩展名:', file.name.substring(file.name.lastIndexOf('.')).toLowerCase());
+            console.log('============================');
+
+            // 检查文件类型
+            const validTypes = ['.log', '.txt'];
+            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+            if (!validTypes.includes(fileExtension)) {
+                console.error('文件类型不匹配:', fileExtension);
+                showErrorMessage('请选择 .log 或 .txt 格式的日志文件');
+                return;
+            }
+
+            // 检查文件大小 (限制为50MB)
+            if (file.size > 50 * 1024 * 1024) {
+                console.error('文件大小超出限制:', file.size, 'bytes (50MB =', 50 * 1024 * 1024, 'bytes)');
+                showErrorMessage('文件大小不能超过50MB');
+                return;
+            }
+
+            console.log('文件验证通过，开始读取...');
+
+            // 显示文件信息
+            showFileInfo(file);
+
+            // 读取文件内容
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                console.log('========== 文件内容预览 ==========');
+                const content = e.target.result;
+                console.log('文件内容长度:', content.length, '字符');
+                console.log('文件内容前200字符:');
+                console.log(content.substring(0, 200));
+                console.log('文件内容后200字符:');
+                console.log(content.substring(content.length - 200));
+                console.log('============================');
+
+                console.log('开始解析文件...');
+                loadFileContent(content, file.name);
+            };
+            reader.onerror = function() {
+                console.error('文件读取失败');
+                showErrorMessage('文件读取失败');
+            };
+            reader.readAsText(file);
+        }
+
+        function showFileInfo(file) {
+            const fileInfo = document.getElementById('file-info');
+            const fileName = document.getElementById('file-name');
+            const uploadArea = document.getElementById('upload-area');
+
+            fileName.textContent = file.name;
+            fileInfo.style.display = 'flex';
+            uploadArea.style.display = 'none';
+        }
+
+        function clearFile() {
+            const fileInfo = document.getElementById('file-info');
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+
+            fileInfo.style.display = 'none';
+            uploadArea.style.display = 'block';
+
+            // 清空文件输入框的值，而不是重新创建元素
+            fileInput.value = '';
+
+            // 清空数据
+            requestsData = [];
+            timeSpansData = [];
+            currentFileName = '';
+
+            // 清空显示区域
+            $('#requests-container').empty();
+
+            // 重置统计信息
+            resetStatistics();
+
+            // 显示提示
+            showSuccessMessage('已清空文件，请重新选择日志文件');
+        }
+
+        function showSuccessMessage(message) {
+            showMessage(message, 'success');
+        }
+
+        function showErrorMessage(message) {
+            showMessage(message, 'error');
+        }
+
+        function showMessage(message, type) {
+            // 移除之前的消息
+            $('.upload-message').remove();
+
+            const messageClass = type === 'success' ? 'upload-success' : 'upload-error';
+            const messageDiv = $(`
+                <div class="upload-message ${messageClass}">
+                    ${message}
+                </div>
+            `);
+
+            $('.upload-card').append(messageDiv);
+
+            // 3秒后自动消失
+            setTimeout(() => {
+                messageDiv.fadeOut(300, function() {
+                    $(this).remove();
+                });
+            }, 3000);
+        }
+
+        function resetStatistics() {
+            document.querySelector('.requests-17').textContent = '0';
+            document.querySelector('.time-span').textContent = '00:00:00';
+            document.querySelector('.performance').textContent = '0.00-0.00s';
+
+            // 重置描述
+            document.querySelector('.requests-17').parentElement.querySelector('.stat-description').textContent = 'HTTP请求组合总数';
+            document.querySelector('.time-span').parentElement.querySelector('.stat-description').textContent = '从首次到最后一次请求';
+            document.querySelector('.performance').parentElement.querySelector('.stat-description').textContent = '平均响应时间约0.00秒';
+        }
+
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 添加初始加载动画
+            const cards = document.querySelectorAll('.stat-card, .section-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+
+            // 设置文件上传
+            setupFileUpload();
+
+            // 加载默认日志文件
+            loadLogFile();
+        });
+
+      </script>
+</body>
+</html>

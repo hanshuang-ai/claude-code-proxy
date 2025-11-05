@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analysis Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 40px);
+    }
+
+    .column {
+      flex: 1;
+      border: 1px solid #ddd;
+      overflow: hidden;
+    }
+
+    .column:first-child {
+      border-right: 1px solid #ddd;
+    }
+
+    .header {
+      background-color: #f5f5f5;
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+      border-bottom: 1px solid #ddd;
+    }
+
+    iframe {
+      width: 100%;
+      height: calc(100% - 40px);
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="column">
+      <div class="header">Proxy Analysis</div>
+      <iframe src="proxy.html" title="Proxy Analysis"></iframe>
+    </div>
+    <div class="column">
+      <div class="header">Hooks Analysis</div>
+      <iframe src="hooks.html" title="Hooks Analysis"></iframe>
+    </div>
+  </div>
+</body>
+</html>

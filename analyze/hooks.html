@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hooks 日志分析</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* 文件上传组件样式 */
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .upload-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+
+        .upload-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+        }
+
+        .upload-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 2px dashed #e2e8f0;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #edf2f7;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.7;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-bottom: 20px;
+        }
+
+        .upload-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f7fafc;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #4a5568;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .clear-btn {
+            background: #fc8181;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .clear-btn:hover {
+            background: #f56565;
+            transform: scale(1.1);
+        }
+
+        /* 消息提示样式 */
+        .upload-message {
+            margin-top: 15px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        .upload-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .upload-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-description {
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        .filter-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .filter-select, .search-input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .filter-select:focus, .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-input {
+            min-width: 200px;
+        }
+
+        .hooks-container {
+            display: grid;
+            gap: 30px;
+        }
+
+        .hook-item {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .hook-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .hook-event {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .hook-meta {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .hook-timestamp {
+            font-size: 0.9rem;
+            color: #666;
+            background: #f0f4ff;
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+
+        .hook-message {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+
+        .hook-description {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+
+        .hook-details {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .part-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .part-header {
+            background: #667eea;
+            color: white;
+            padding: 12px 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .part-header:hover {
+            background: #5a67d8;
+        }
+
+        .part-content {
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            background: #1a1a1a;
+            color: #ffffff;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            min-height: 100px;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .part-content.hidden {
+            display: none;
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-icon.rotated {
+            transform: rotate(180deg);
+        }
+
+        /* 自定义滚动条样式 */
+        .part-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .part-content::-webkit-scrollbar-track {
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        .part-content::-webkit-scrollbar-thumb {
+            background: #4a4a4a;
+            border-radius: 4px;
+        }
+
+        .part-content::-webkit-scrollbar-thumb:hover {
+            background: #5a5a5a;
+        }
+
+        .event-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .event-userprompt { background: #FF6B6B; color: white; }
+        .event-pretool { background: #4ECDC4; color: white; }
+        .event-posttool { background: #45B7D1; color: white; }
+        .event-notification { background: #9C27B0; color: white; }
+        .event-stop { background: #F44336; color: white; }
+        .event-subagent-stop { background: #FF9800; color: white; }
+        .event-pre-compact { background: #FFC107; color: white; }
+        .event-session-start { background: #4CAF50; color: white; }
+        .event-session-end { background: #607D8B; color: white; }
+        .event-default { background: #78909C; color: white; }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .error-message {
+            background: #fff5f5;
+            border: 2px solid #fc8181;
+            color: #c53030;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.1rem;
+            margin: 20px 0;
+        }
+
+        .json-key { color: #9C27B0; }
+        .json-string { color: #4CAF50; }
+        .json-number { color: #FF9800; }
+        .json-boolean { color: #F44336; }
+        .json-null { color: #9E9E9E; }
+        .json-url { color: #2196F3; text-decoration: underline; cursor: pointer; }
+
+        .transcript-path {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 8px 12px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .transcript-path-label {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 5px;
+        }
+
+        .transcript-path-value {
+            color: #856404;
+            word-break: break-all;
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 3px;
+        }
+
+        .has-transcript-badge {
+            background: #ffc107;
+            color: #212529;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .transcript-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .transcript-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .transcript-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .transcript-btn.copy {
+            background: #28a745;
+        }
+
+        .transcript-btn.copy:hover {
+            background: #218838;
+        }
+
+        .transcript-btn.open {
+            background: #007bff;
+        }
+
+        .transcript-btn.open:hover {
+            background: #0056b3;
+        }
+
+        .transcript-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .filter-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-input {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Hooks 日志分析</h1>
+            <p>上传并分析 Claude Hooks 事件日志</p>
+        </div>
+
+        <!-- 文件上传组件 -->
+        <div class="upload-section">
+            <div class="upload-card">
+                <div class="upload-header">
+                    <span>📁 选择 Hooks 日志文件</span>
+                </div>
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-content">
+                        <div class="upload-icon">📄</div>
+                        <p class="upload-text">点击选择文件或拖拽文件到此处</p>
+                        <p class="upload-hint">支持 .log .txt 格式的日志文件，每行一个 JSON 对象，最大50MB</p>
+                        <input type="file" id="file-input" accept=".log,.txt" style="display: none;">
+                        <button class="upload-btn" onclick="document.getElementById('file-input').click()">选择文件</button>
+                    </div>
+                </div>
+                <div class="file-info" id="file-info" style="display: none;">
+                    <span class="file-name" id="file-name"></span>
+                    <button class="clear-btn" onclick="clearFile()">✕</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="stats-section" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="total-hooks">0</div>
+                    <div class="stat-label">总事件数</div>
+                    <div class="stat-description">所有 Hooks 事件</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="user-prompts">0</div>
+                    <div class="stat-label">用户提示事件</div>
+                    <div class="stat-description">UserPromptSubmit</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="pre-tools">0</div>
+                    <div class="stat-label">工具执行前事件</div>
+                    <div class="stat-description">PreToolUse</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="post-tools">0</div>
+                    <div class="stat-label">工具执行后事件</div>
+                    <div class="stat-description">PostToolUse</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="notifications">0</div>
+                    <div class="stat-label">通知事件</div>
+                    <div class="stat-description">Notification</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stops">0</div>
+                    <div class="stat-label">停止事件</div>
+                    <div class="stat-description">Stop</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="subagent-stops">0</div>
+                    <div class="stat-label">子代理停止事件</div>
+                    <div class="stat-description">SubagentStop</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="pre-compacts">0</div>
+                    <div class="stat-label">压缩前事件</div>
+                    <div class="stat-description">PreCompact</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="session-starts">0</div>
+                    <div class="stat-label">会话开始事件</div>
+                    <div class="stat-description">SessionStart</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="session-ends">0</div>
+                    <div class="stat-label">会话结束事件</div>
+                    <div class="stat-description">SessionEnd</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="transcript-count">0</div>
+                    <div class="stat-label">包含转录路径事件</div>
+                    <div class="stat-description">包含 transcript_path</div>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label class="filter-label">事件类型：</label>
+                        <select class="filter-select" id="event-filter">
+                            <option value="">全部</option>
+                            <option value="UserPromptSubmit">UserPromptSubmit</option>
+                            <option value="PreToolUse">PreToolUse</option>
+                            <option value="PostToolUse">PostToolUse</option>
+                            <option value="Notification">Notification</option>
+                            <option value="Stop">Stop</option>
+                            <option value="SubagentStop">SubagentStop</option>
+                            <option value="PreCompact">PreCompact</option>
+                            <option value="SessionStart">SessionStart</option>
+                            <option value="SessionEnd">SessionEnd</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">搜索：</label>
+                        <input type="text" class="search-input" id="search-input" placeholder="搜索事件内容...">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="hooks-container" class="hooks-container"></div>
+
+        <div id="no-data" class="no-data">
+            请上传 hooks.log 文件开始分析
+        </div>
+
+        <div id="error-message" class="error-message" style="display: none;"></div>
+    </div>
+
+    <script>
+        let hooksData = [];
+        let filteredData = [];
+
+        // 文件上传相关函数
+        function setupFileUpload() {
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+
+            // 点击上传区域触发文件选择（但不包括按钮）
+            uploadArea.addEventListener('click', function(event) {
+                // 如果点击的是按钮，不处理
+                if (event.target.tagName === 'BUTTON' || event.target.closest('button')) {
+                    return;
+                }
+                fileInput.click();
+            });
+
+            // 文件选择事件
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // 拖拽事件
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleDrop);
+        }
+
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        }
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const file = files[0];
+
+            // 检查文件类型
+            const validTypes = ['.log', '.txt'];
+            const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+            if (!validTypes.includes(fileExtension)) {
+                showErrorMessage('请选择 .log 或 .txt 格式的日志文件');
+                return;
+            }
+
+            // 检查文件大小 (限制为50MB)
+            if (file.size > 50 * 1024 * 1024) {
+                showErrorMessage('文件大小不能超过50MB');
+                return;
+            }
+
+            // 显示文件信息
+            showFileInfo(file);
+
+            // 读取文件内容
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    console.log('文件读取成功，内容长度:', content.length);
+                    console.log('文件内容前100字符:', content.substring(0, 100));
+
+                    if (!content || content.trim().length === 0) {
+                        showErrorMessage('文件内容为空');
+                        return;
+                    }
+
+                    parseHooksData(content);
+                    showSuccessMessage(`成功加载文件: ${file.name}`);
+                } catch (error) {
+                    console.error('文件解析异常:', error);
+                    showErrorMessage('文件解析失败：' + error.message);
+                }
+            };
+            reader.onerror = function(error) {
+                console.error('文件读取失败:', error);
+                showErrorMessage('文件读取失败');
+            };
+            reader.readAsText(file);
+        }
+
+        function showFileInfo(file) {
+            const fileInfo = document.getElementById('file-info');
+            const fileName = document.getElementById('file-name');
+            const uploadArea = document.getElementById('upload-area');
+
+            fileName.textContent = file.name;
+            fileInfo.style.display = 'flex';
+            uploadArea.style.display = 'none';
+        }
+
+        function clearFile() {
+            const fileInfo = document.getElementById('file-info');
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+
+            fileInfo.style.display = 'none';
+            uploadArea.style.display = 'block';
+
+            // 清空文件输入框的值
+            fileInput.value = '';
+
+            // 清空数据
+            hooksData = [];
+            filteredData = [];
+
+            // 清空显示区域
+            document.getElementById('hooks-container').innerHTML = '';
+            document.getElementById('no-data').style.display = 'block';
+            document.getElementById('stats-section').style.display = 'none';
+
+            // 显示提示
+            showSuccessMessage('已清空文件，请重新选择日志文件');
+        }
+
+        function showSuccessMessage(message) {
+            showMessage(message, 'success');
+        }
+
+        function showErrorMessage(message) {
+            showMessage(message, 'error');
+        }
+
+        function showMessage(message, type) {
+            // 移除之前的消息
+            const existingMessages = document.querySelectorAll('.upload-message');
+            existingMessages.forEach(msg => msg.remove());
+
+            const messageClass = type === 'success' ? 'upload-success' : 'upload-error';
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `upload-message ${messageClass}`;
+            messageDiv.textContent = message;
+
+            document.querySelector('.upload-card').appendChild(messageDiv);
+
+            // 3秒后自动消失
+            setTimeout(() => {
+                messageDiv.style.opacity = '0';
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // 解析 hooks 数据
+        function parseHooksData(content) {
+            console.log('开始解析 hooks 数据，内容长度:', content.length);
+
+            hooksData = [];
+            const lines = content.split('\n').filter(line => line.trim());
+            console.log('分割后的行数:', lines.length);
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                try {
+                    const hookData = JSON.parse(line);
+                    hooksData.push(hookData);
+                    console.log(`成功解析第 ${i + 1} 行，事件类型:`, hookData.event);
+                } catch (error) {
+                    console.error(`解析第 ${i + 1} 行失败:`, error.message);
+                    console.error('问题行的内容:', line.substring(0, 100) + (line.length > 100 ? '...' : ''));
+                }
+            }
+
+            console.log('解析完成，总共解析到', hooksData.length, '个有效事件');
+
+            if (hooksData.length === 0) {
+                showErrorMessage('未找到有效的 hooks 数据。请确保文件格式正确，每行应该是一个有效的JSON对象。');
+                console.error('解析失败，没有找到有效的hooks数据');
+                return;
+            }
+
+            filteredData = [...hooksData];
+            console.log('准备显示数据，过滤后的事件数量:', filteredData.length);
+            displayData();
+        }
+
+        // 显示数据
+        function displayData() {
+            document.getElementById('no-data').style.display = 'none';
+            document.getElementById('error-message').style.display = 'none';
+            document.getElementById('stats-section').style.display = 'block';
+
+            updateStatistics();
+            renderHooks();
+        }
+
+        // 更新统计信息
+        function updateStatistics() {
+            const stats = {
+                total: filteredData.length,
+                userPrompts: filteredData.filter(h => h.event === 'UserPromptSubmit').length,
+                preTools: filteredData.filter(h => h.event === 'PreToolUse').length,
+                postTools: filteredData.filter(h => h.event === 'PostToolUse').length,
+                notifications: filteredData.filter(h => h.event === 'Notification').length,
+                stops: filteredData.filter(h => h.event === 'Stop').length,
+                subagentStops: filteredData.filter(h => h.event === 'SubagentStop').length,
+                preCompacts: filteredData.filter(h => h.event === 'PreCompact').length,
+                sessionStarts: filteredData.filter(h => h.event === 'SessionStart').length,
+                sessionEnds: filteredData.filter(h => h.event === 'SessionEnd').length,
+                transcriptCount: filteredData.filter(h => hasTranscriptPath(h)).length
+            };
+
+            document.getElementById('total-hooks').textContent = stats.total;
+            document.getElementById('user-prompts').textContent = stats.userPrompts;
+            document.getElementById('pre-tools').textContent = stats.preTools;
+            document.getElementById('post-tools').textContent = stats.postTools;
+            document.getElementById('notifications').textContent = stats.notifications;
+            document.getElementById('stops').textContent = stats.stops;
+            document.getElementById('subagent-stops').textContent = stats.subagentStops;
+            document.getElementById('pre-compacts').textContent = stats.preCompacts;
+            document.getElementById('session-starts').textContent = stats.sessionStarts;
+            document.getElementById('session-ends').textContent = stats.sessionEnds;
+            document.getElementById('transcript-count').textContent = stats.transcriptCount;
+        }
+
+        // 渲染 hooks
+        function renderHooks() {
+            const container = document.getElementById('hooks-container');
+            container.innerHTML = '';
+
+            filteredData.forEach((hook, index) => {
+                const hookElement = createHookElement(hook, index);
+                container.appendChild(hookElement);
+            });
+
+            // 添加动画
+            const elements = container.querySelectorAll('.hook-item');
+            elements.forEach((el, i) => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                }, i * 50);
+            });
+        }
+
+        // 检查是否包含 transcript_path 字段
+        function hasTranscriptPath(hook) {
+            if (!hook.payload) return false;
+
+            // 检查 payload 中是否直接包含 transcript_path
+            if (hook.payload.transcript_path) return true;
+
+            // 深度搜索 payload 对象中的 transcript_path 字段
+            return searchInObject(hook.payload, 'transcript_path');
+        }
+
+        // 在对象中递归搜索指定字段
+        function searchInObject(obj, fieldName) {
+            if (!obj || typeof obj !== 'object') return false;
+
+            for (const key in obj) {
+                if (key === fieldName) return true;
+
+                if (typeof obj[key] === 'object' && obj[key] !== null) {
+                    if (searchInObject(obj[key], fieldName)) return true;
+                }
+            }
+
+            return false;
+        }
+
+        // 获取 transcript_path 的值
+        function getTranscriptPath(hook) {
+            if (!hook.payload) return null;
+
+            // 检查 payload 中是否直接包含 transcript_path
+            if (hook.payload.transcript_path) return hook.payload.transcript_path;
+
+            // 深度搜索并返回 transcript_path 的值
+            return findValueInObject(hook.payload, 'transcript_path');
+        }
+
+        // 在对象中递归查找指定字段的值
+        function findValueInObject(obj, fieldName) {
+            if (!obj || typeof obj !== 'object') return null;
+
+            for (const key in obj) {
+                if (key === fieldName) return obj[key];
+
+                if (typeof obj[key] === 'object' && obj[key] !== null) {
+                    const found = findValueInObject(obj[key], fieldName);
+                    if (found !== null) return found;
+                }
+            }
+
+            return null;
+        }
+
+        // 创建 hook 元素
+        function createHookElement(hook, index) {
+            const div = document.createElement('div');
+            div.className = 'hook-item';
+
+            const eventClass = getEventClass(hook.event);
+            const formattedTime = formatTimestamp(hook.ts);
+            const eventDescription = getEventDescription(hook.event, hook.phase);
+            const hasTranscript = hasTranscriptPath(hook);
+            const transcriptPath = getTranscriptPath(hook);
+
+            div.innerHTML = `
+                <div class="hook-header">
+                    <div class="hook-event">
+                        <span class="event-badge ${eventClass}">${hook.event}</span>
+                        ${hasTranscript ? '<span class="has-transcript-badge">包含转录路径</span>' : ''}
+                    </div>
+                    <div class="hook-meta">
+                        <div class="hook-timestamp">${formattedTime}</div>
+                    </div>
+                </div>
+                <div class="hook-message">${hook.message}</div>
+                <div class="hook-description">${hook.description || eventDescription}</div>
+                ${hasTranscript && transcriptPath ? `
+                <div class="transcript-path">
+                    <div class="transcript-path-label">📄 转录路径 (transcript_path):</div>
+                    <div class="transcript-path-value">${escapeHtml(transcriptPath)}</div>
+                    <div class="transcript-actions">
+                        <button class="transcript-btn copy" onclick="copyTranscriptPath('${transcriptPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')" title="复制路径">
+                            📋 复制
+                        </button>
+                        ${isUrl(transcriptPath) ?
+                            `<button class="transcript-btn open" onclick="openTranscriptUrl('${transcriptPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')" title="在浏览器中打开">
+                                🔗 打开链接
+                            </button>` :
+                            `<button class="transcript-btn open" onclick="tryOpenTranscriptFile('${transcriptPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')" title="尝试打开文件">
+                                📂 尝试打开
+                            </button>`
+                        }
+                    </div>
+                </div>
+                ` : ''}
+                <div class="hook-details">
+                    <div class="part-card">
+                        <div class="part-header" onclick="toggleDetail('payload-${index}')">
+                            <span>Payload</span>
+                            <span class="toggle-icon" id="icon-payload-${index}">▼</span>
+                        </div>
+                        <div class="part-content hidden" id="payload-${index}">
+                            ${formatJson(hook.payload)}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return div;
+        }
+
+        // 获取事件描述
+        function getEventDescription(event, phase) {
+            switch (event) {
+                case 'PreToolUse':
+                    return '工具执行前触发，可基于参数阻止或调整调用。';
+                case 'PostToolUse':
+                    return '工具成功执行后触发，常用于格式化、校验或记录结果。';
+                case 'UserPromptSubmit':
+                    return '用户提交提示前触发，可进行提示校验或增强。';
+                case 'Notification':
+                    return '当系统发送通知（需授权或等待输入）时触发。';
+                case 'Stop':
+                    return '主代理完成响应时触发（用户中断不触发）。';
+                case 'SubagentStop':
+                    return '子代理任务完成时触发，用于记录子任务结束。';
+                case 'PreCompact':
+                    return phase === 'manual'
+                        ? '手动压缩前触发，用于记录或准备压缩。'
+                        : '自动压缩前触发（上下文接近上限），用于记录或准备压缩。';
+                case 'SessionStart':
+                    switch (phase) {
+                        case 'startup':
+                            return '新会话启动时触发，用于加载上下文或设置环境。';
+                        case 'resume':
+                            return '恢复会话时触发，用于继续先前上下文。';
+                        case 'clear':
+                            return '清空会话后触发，用于重置环境与上下文。';
+                        case 'compact':
+                            return '因压缩操作触发的会话启动，用于维持上下文。';
+                        default:
+                            return '会话启动相关事件，初始化或恢复上下文。';
+                    }
+                case 'SessionEnd':
+                    return '会话结束时触发，常用于收尾与清理。';
+                default:
+                    return '未知事件。';
+            }
+        }
+
+        // 获取事件样式类
+        function getEventClass(event) {
+            switch (event) {
+                case 'UserPromptSubmit': return 'event-userprompt';
+                case 'PreToolUse': return 'event-pretool';
+                case 'PostToolUse': return 'event-posttool';
+                case 'Notification': return 'event-notification';
+                case 'Stop': return 'event-stop';
+                case 'SubagentStop': return 'event-subagent-stop';
+                case 'PreCompact': return 'event-pre-compact';
+                case 'SessionStart': return 'event-session-start';
+                case 'SessionEnd': return 'event-session-end';
+                default: return 'event-default';
+            }
+        }
+
+        // 格式化时间戳
+        function formatTimestamp(ts) {
+            const date = new Date(ts);
+            return date.toLocaleString('zh-CN');
+        }
+
+        // 格式化 JSON
+        function formatJson(obj, indent = 0) {
+            if (!obj) return '';
+
+            try {
+                const spaces = '  '.repeat(indent);
+                let result = '';
+
+                if (Array.isArray(obj)) {
+                    result += '[\n';
+                    obj.forEach((item, index) => {
+                        result += spaces + '  ';
+                        if (typeof item === 'object' && item !== null) {
+                            result += formatJson(item, indent + 1);
+                        } else {
+                            result += formatJsonValue(item);
+                        }
+                        if (index < obj.length - 1) result += ',';
+                        result += '\n';
+                    });
+                    result += spaces + ']';
+                } else if (typeof obj === 'object' && obj !== null) {
+                    result += '{\n';
+                    const keys = Object.keys(obj);
+                    keys.forEach((key, index) => {
+                        result += spaces + '  ';
+                        result += `<span class="json-key">"${escapeHtml(key)}"</span>: `;
+
+                        if (typeof obj[key] === 'object' && obj[key] !== null) {
+                            result += formatJson(obj[key], indent + 1);
+                        } else {
+                            result += formatJsonValue(obj[key]);
+                        }
+
+                        if (index < keys.length - 1) result += ',';
+                        result += '\n';
+                    });
+                    result += spaces + '}';
+                } else {
+                    result += formatJsonValue(obj);
+                }
+
+                return result;
+            } catch (error) {
+                return escapeHtml(JSON.stringify(obj));
+            }
+        }
+
+        // 格式化 JSON 值
+        function formatJsonValue(value) {
+            if (typeof value === 'string') {
+                if (value.startsWith('http://') || value.startsWith('https://')) {
+                    return `<span class="json-url" onclick="window.open('${escapeHtml(value)}', '_blank')">"${escapeHtml(value)}"</span>`;
+                }
+                return `<span class="json-string">"${escapeHtml(value)}"</span>`;
+            } else if (typeof value === 'number') {
+                return `<span class="json-number">${value}</span>`;
+            } else if (typeof value === 'boolean') {
+                return `<span class="json-boolean">${value}</span>`;
+            } else if (value === null) {
+                return `<span class="json-null">null</span>`;
+            } else {
+                return `<span style="color: #666;">${value}</span>`;
+            }
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 切换详情显示
+        function toggleDetail(id) {
+            const content = document.getElementById(id);
+            const icon = document.getElementById('icon-' + id);
+
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.classList.add('rotated');
+            } else {
+                content.classList.add('hidden');
+                icon.classList.remove('rotated');
+            }
+        }
+
+        // 过滤和搜索
+        document.getElementById('event-filter').addEventListener('change', applyFilters);
+        document.getElementById('search-input').addEventListener('input', applyFilters);
+
+        function applyFilters() {
+            const eventFilter = document.getElementById('event-filter').value;
+            const searchText = document.getElementById('search-input').value.toLowerCase();
+
+            filteredData = hooksData.filter(hook => {
+                const matchEvent = !eventFilter || hook.event === eventFilter;
+                const matchSearch = !searchText ||
+                    JSON.stringify(hook).toLowerCase().includes(searchText);
+
+                return matchEvent && matchSearch;
+            });
+
+            updateStatistics();
+            renderHooks();
+        }
+
+        // 检查是否为 URL
+        function isUrl(text) {
+            try {
+                new URL(text);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+
+        // 复制转录路径到剪贴板
+        async function copyTranscriptPath(path) {
+            try {
+                await navigator.clipboard.writeText(path);
+                showToast('路径已复制到剪贴板', 'success');
+            } catch (error) {
+                // 降级方案
+                const textArea = document.createElement('textarea');
+                textArea.value = path;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showToast('路径已复制到剪贴板', 'success');
+            }
+        }
+
+        // 打开转录链接（URL）
+        function openTranscriptUrl(url) {
+            window.open(url, '_blank');
+        }
+
+        // 尝试打开本地文件（通过文件选择器）
+        function tryOpenTranscriptFile(path) {
+            // 方案1：复制路径到剪贴板
+            copyTranscriptPath(path);
+
+            // 方案2：如果是网络链接，直接打开
+            if (path.startsWith('http://') || path.startsWith('https://')) {
+                openTranscriptUrl(path);
+                return;
+            }
+
+            // 方案3：使用文件选择器让用户选择本地文件
+            if (path.startsWith('file://')) {
+                // file:// 协议，提取文件路径
+                const cleanPath = path.replace(/^file:\/\//, '');
+                showFileSelector(cleanPath);
+            } else {
+                // 本地文件路径
+                showFileSelector(path);
+            }
+        }
+
+        // 显示文件选择器
+        function showFileSelector(expectedPath) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.style.display = 'none';
+
+            // 从路径中提取文件名
+            const fileName = expectedPath.split(/[/\\]/).pop();
+
+            input.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    if (file.name === fileName) {
+                        // 文件名匹配，读取并显示文件内容
+                        readAndDisplayFile(file);
+                    } else {
+                        showToast(`选择的文件名不匹配\n期望: ${fileName}\n实际: ${file.name}`, 'warning');
+                        // 仍然显示选择的文件内容
+                        readAndDisplayFile(file);
+                    }
+                }
+                // 清理input元素
+                document.body.removeChild(input);
+            });
+
+            document.body.appendChild(input);
+
+            // 显示提示，然后触发文件选择
+            showToast(`请选择文件: ${fileName}`, 'info');
+            setTimeout(() => {
+                input.click();
+            }, 500);
+        }
+
+        // 读取并显示文件内容
+        function readAndDisplayFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+
+                // 创建一个模态窗口显示文件内容
+                showFileModal(file.name, content);
+            };
+
+            reader.onerror = function() {
+                showToast('文件读取失败', 'error');
+            };
+
+            reader.readAsText(file);
+        }
+
+        // 显示文件内容的模态窗口
+        function showFileModal(fileName, content) {
+            // 创建模态背景
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 10000;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                animation: fadeIn 0.3s ease;
+            `;
+
+            // 创建模态内容
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                width: 90%;
+                max-width: 800px;
+                max-height: 80vh;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                animation: slideUp 0.3s ease;
+            `;
+
+            // 创建头部
+            const header = document.createElement('div');
+            header.style.cssText = `
+                padding: 20px;
+                border-bottom: 1px solid #e0e0e0;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #f8f9fa;
+                border-radius: 12px 12px 0 0;
+            `;
+
+            const title = document.createElement('h3');
+            title.textContent = `📄 ${fileName}`;
+            title.style.cssText = `
+                margin: 0;
+                color: #333;
+                font-size: 1.2rem;
+            `;
+
+            // 创建操作按钮区域
+            const actions = document.createElement('div');
+            actions.style.cssText = `
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            `;
+
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = '📋 复制内容';
+            copyBtn.style.cssText = `
+                background: #28a745;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 0.8rem;
+                cursor: pointer;
+                transition: background 0.3s ease;
+            `;
+            copyBtn.onmouseover = () => copyBtn.style.background = '#218838';
+            copyBtn.onmouseout = () => copyBtn.style.background = '#28a745';
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '✕';
+            closeBtn.style.cssText = `
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #666;
+                padding: 5px;
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            closeBtn.onmouseover = () => closeBtn.style.background = '#e0e0e0';
+            closeBtn.onmouseout = () => closeBtn.style.background = 'none';
+
+            // 添加复制功能
+            copyBtn.onclick = async () => {
+                try {
+                    await navigator.clipboard.writeText(content);
+                    showToast('文件内容已复制到剪贴板', 'success');
+                } catch (error) {
+                    // 降级方案
+                    const textArea = document.createElement('textarea');
+                    textArea.value = content;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    showToast('文件内容已复制到剪贴板', 'success');
+                }
+            };
+
+            // 创建内容区域
+            const contentArea = document.createElement('div');
+            contentArea.style.cssText = `
+                padding: 20px;
+                overflow-y: auto;
+                flex: 1;
+                font-family: 'Courier New', monospace;
+                font-size: 0.9rem;
+                line-height: 1.5;
+                background: #1a1a1a;
+                color: #ffffff;
+                white-space: pre-wrap;
+                border-radius: 0 0 12px 12px;
+                max-height: 60vh;
+            `;
+
+            // 设置内容
+            contentArea.textContent = content;
+
+            // 组装模态窗口
+            actions.appendChild(copyBtn);
+            actions.appendChild(closeBtn);
+            header.appendChild(title);
+            header.appendChild(actions);
+            modalContent.appendChild(header);
+            modalContent.appendChild(contentArea);
+            modal.appendChild(modalContent);
+
+            // 添加关闭事件
+            closeBtn.onclick = () => document.body.removeChild(modal);
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
+                }
+            };
+
+            // 添加键盘支持 (ESC 关闭)
+            const keyHandler = (e) => {
+                if (e.key === 'Escape') {
+                    document.body.removeChild(modal);
+                    document.removeEventListener('keydown', keyHandler);
+                }
+            };
+            document.addEventListener('keydown', keyHandler);
+
+            // 模态窗口关闭时清理事件监听器
+            const cleanup = () => {
+                document.removeEventListener('keydown', keyHandler);
+                if (document.body.contains(modal)) {
+                    document.body.removeChild(modal);
+                }
+            };
+            closeBtn.onclick = cleanup;
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    cleanup();
+                }
+            };
+
+            // 添加到页面
+            document.body.appendChild(modal);
+
+            // 添加动画样式
+            if (!document.getElementById('modal-animations')) {
+                const style = document.createElement('style');
+                style.id = 'modal-animations';
+                style.textContent = `
+                    @keyframes fadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+                    @keyframes slideUp {
+                        from {
+                            opacity: 0;
+                            transform: translateY(50px);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+
+        // 显示提示信息
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : type === 'error' ? '#dc3545' : '#007bff'};
+                color: white;
+                padding: 12px 16px;
+                border-radius: 6px;
+                font-size: 0.9rem;
+                z-index: 10000;
+                max-width: 400px;
+                word-wrap: break-word;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                animation: slideInRight 0.3s ease;
+            `;
+
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // 3秒后自动消失
+            setTimeout(() => {
+                toast.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        document.body.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // 添加动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+
+            @keyframes slideOutRight {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 添加初始加载动画
+            const cards = document.querySelectorAll('.stat-card, .upload-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+
+            // 设置文件上传
+            setupFileUpload();
+        });
+
+            </script>
+</body>
+</html>
