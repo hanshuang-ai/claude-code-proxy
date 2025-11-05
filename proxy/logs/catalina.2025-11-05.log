@@ -1,0 +1,34 @@
+05-Nov-2025 14:42:29.710 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log Server.服务器版本: Apache Tomcat/9.0.105
+05-Nov-2025 14:42:29.713 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 服务器构建:        May 7 2025 18:36:02 UTC
+05-Nov-2025 14:42:29.713 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 服务器版本号:      9.0.105.0
+05-Nov-2025 14:42:29.713 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 操作系统名称:      Windows 11
+05-Nov-2025 14:42:29.713 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log OS.版本:           10.0
+05-Nov-2025 14:42:29.714 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 架构:              amd64
+05-Nov-2025 14:42:29.714 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log Java 环境变量:     I:\claude-code-proxy\proxy\jre
+05-Nov-2025 14:42:29.714 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log Java虚拟机版本:    1.8.0_461-b11
+05-Nov-2025 14:42:29.714 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log JVM.供应商:        Oracle Corporation
+05-Nov-2025 14:42:29.714 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_BASE:     I:\claude-code-proxy\proxy
+05-Nov-2025 14:42:29.714 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_HOME:     I:\claude-code-proxy\proxy
+05-Nov-2025 14:42:29.720 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 命令行参数：       -Djava.util.logging.config.file=I:\claude-code-proxy/proxy\conf\logging.properties
+05-Nov-2025 14:42:29.720 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 命令行参数：       -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager
+05-Nov-2025 14:42:29.720 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 命令行参数：       -Djdk.tls.ephemeralDHKeySize=2048
+05-Nov-2025 14:42:29.720 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 命令行参数：       -Djava.protocol.handler.pkgs=org.apache.catalina.webresources
+05-Nov-2025 14:42:29.721 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 命令行参数：       -Dsun.io.useCanonCaches=false
+05-Nov-2025 14:42:29.721 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 命令行参数：       -Dignore.endorsed.dirs=
+05-Nov-2025 14:42:29.721 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 命令行参数：       -Dcatalina.base=I:\claude-code-proxy/proxy
+05-Nov-2025 14:42:29.721 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 命令行参数：       -Dcatalina.home=I:\claude-code-proxy/proxy
+05-Nov-2025 14:42:29.721 信息 [main] org.apache.catalina.startup.VersionLoggerListener.log 命令行参数：       -Djava.io.tmpdir=I:\claude-code-proxy/proxy\temp
+05-Nov-2025 14:42:29.725 信息 [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent 使用APR版本[1.7.4]加载了基于APR的Apache Tomcat本机库[1.3.1]。
+05-Nov-2025 14:42:29.725 信息 [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent APR功能：IPv6[true]、sendfile[true]、accept filters[false]、random[true]、UDS [true]。
+05-Nov-2025 14:42:29.725 信息 [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent APR/OpenSSL配置：useAprConnector[false]，useOpenSSL[true]
+05-Nov-2025 14:42:29.732 信息 [main] org.apache.catalina.core.AprLifecycleListener.initializeSSL OpenSSL成功初始化 [OpenSSL 3.0.14 4 Jun 2024]
+05-Nov-2025 14:42:29.995 信息 [main] org.apache.coyote.AbstractProtocol.init 初始化协议处理器 ["http-nio-8888"]
+05-Nov-2025 14:42:30.011 信息 [main] org.apache.catalina.startup.Catalina.load 服务器在[452]毫秒内初始化
+05-Nov-2025 14:42:30.038 信息 [main] org.apache.catalina.core.StandardService.startInternal 正在启动服务[Catalina]
+05-Nov-2025 14:42:30.038 信息 [main] org.apache.catalina.core.StandardEngine.startInternal 正在启动 Servlet 引擎：[Apache Tomcat/9.0.105]
+05-Nov-2025 14:42:30.051 信息 [main] org.apache.catalina.startup.HostConfig.deployWAR 正在部署web应用程序存档文件[I:\claude-code-proxy\proxy\webapps\proxy.war]
+05-Nov-2025 14:42:30.651 信息 [main] org.apache.jasper.servlet.TldScanner.scanJars 至少有一个JAR被扫描用于TLD但尚未包含TLD。 为此记录器启用调试日志记录，以获取已扫描但未在其中找到TLD的完整JAR列表。 在扫描期间跳过不需要的JAR可以缩短启动时间和JSP编译时间。
+05-Nov-2025 14:42:30.850 警告 [main] org.apache.catalina.util.SessionIdGeneratorBase.createSecureRandom 使用[SHA1PRNG]创建会话ID生成的SecureRandom实例花费了[179]毫秒。
+05-Nov-2025 14:42:31.024 信息 [main] org.apache.catalina.startup.HostConfig.deployWAR web应用程序存档文件[I:\claude-code-proxy\proxy\webapps\proxy.war]的部署已在[973]ms内完成
+05-Nov-2025 14:42:31.027 信息 [main] org.apache.coyote.AbstractProtocol.start 开始协议处理句柄["http-nio-8888"]
+05-Nov-2025 14:42:31.037 信息 [main] org.apache.catalina.startup.Catalina.start [1025]毫秒后服务器启动
