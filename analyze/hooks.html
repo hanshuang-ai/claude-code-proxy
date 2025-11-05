@@ -840,20 +840,30 @@
         // 解析 hooks 数据
         function parseHooksData(content) {
             console.log('开始解析 hooks 数据，内容长度:', content.length);
+            console.log('文件内容前200字符:', content.substring(0, 200));
 
             hooksData = [];
             const lines = content.split('\n').filter(line => line.trim());
             console.log('分割后的行数:', lines.length);
 
+            if (lines.length === 0) {
+                showErrorMessage('文件内容为空或只包含空白行');
+                console.error('文件内容为空');
+                return;
+            }
+
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
+                console.log(`处理第 ${i + 1} 行，长度: ${line.length}, 前50字符:`, line.substring(0, 50));
+
                 try {
                     const hookData = JSON.parse(line);
                     hooksData.push(hookData);
-                    console.log(`成功解析第 ${i + 1} 行，事件类型:`, hookData.event);
+                    console.log(`成功解析第 ${i + 1} 行，事件类型:`, hookData.event, '时间戳:', hookData.ts);
                 } catch (error) {
                     console.error(`解析第 ${i + 1} 行失败:`, error.message);
-                    console.error('问题行的内容:', line.substring(0, 100) + (line.length > 100 ? '...' : ''));
+                    console.error('问题行的完整内容:', line);
+                    console.error('问题行的长度:', line.length);
                 }
             }
 
@@ -867,6 +877,7 @@
 
             filteredData = [...hooksData];
             console.log('准备显示数据，过滤后的事件数量:', filteredData.length);
+            console.log('第一个事件样本:', hooksData[0]);
             displayData();
         }
 

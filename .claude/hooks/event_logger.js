@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
  * Cross-platform event logger for Claude Code hooks
- * Writes structured JSON entries to .claude/hooks.log
+ * Writes structured JSON entries to logs/hooks.log
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,11 +10,11 @@ const event = process.argv[2] || 'UnknownEvent';
 const phase = process.argv[3] || '';
 
 const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-const claudeDir = path.join(projectDir, '.claude');
-const logFile = path.join(claudeDir, 'hooks.log');
+const logsDir = path.join(projectDir, 'logs');
+const logFile = path.join(logsDir, 'hooks.log');
 
 try {
-  fs.mkdirSync(claudeDir, { recursive: true });
+  fs.mkdirSync(logsDir, { recursive: true });
 } catch {}
 
 function getDescription(evt, ph) {
@@ -97,7 +97,26 @@ async function readStdinJSON() {
   }
 }
 
+// Rotate log file if it gets too large (optional)
+function rotateLogFile() {
+  try {
+    const stats = fs.statSync(logFile);
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+    if (stats.size > MAX_SIZE) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupFile = path.join(logsDir, `hooks-${timestamp}.log`);
+      fs.renameSync(logFile, backupFile);
+    }
+  } catch {
+    // File doesn't exist or can't access, ignore
+  }
+}
+
 const run = async () => {
+  // Check if we need to rotate the log file
+  rotateLogFile();
+
   const description = getDescription(event, phase);
   const docUrl = getDocUrl(event);
   const payload = await readStdinJSON();
