@@ -1,1 +1,3 @@
 *.log
+catalina.out
+*.txt
